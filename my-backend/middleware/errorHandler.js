@@ -8,7 +8,7 @@ const errorHandler = (err, req, res, next) => {
     message = Object.values(err.errors).map(val => val.message).join(', ');
   }
 
-  // Mongoose duplicate key
+  // Mongoose duplicate 
   if (err.code === 11000) {
     statusCode = 400;
     message = 'Dữ liệu đã tồn tại trong hệ thống';
