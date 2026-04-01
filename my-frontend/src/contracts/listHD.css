@@ -1,0 +1,334 @@
+/* Container chính */
+.contract-container {
+    padding: 24px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    background-color: #f9fafb;
+    min-height: 100vh;
+}
+
+.contract-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+
+/* Thanh công cụ tìm kiếm */
+.contract-toolbar {
+    margin-bottom: 24px;
+}
+
+.search-box-HD {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.search-input-HD {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    transition: border 0.2s;
+}
+
+.search-input-HD:focus {
+    border-color: #2563eb;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.btn-secondary:hover {
+    background-color: #d1d5db;
+}
+
+/* Table styling */
+.table-wrapper {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+/* ===== TABLE ===== */
+.contract-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Header */
+.contract-table thead {
+    background: #f5f7fa;
+}
+
+.contract-table th {
+    padding: 12px 20px;
+    text-align: left;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #e5e5e5;
+ 
+    
+}
+
+/* Body */
+.contract-table td {
+    padding: 12px 15px;
+    font-size: 18px;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+}
+
+/* Hover row */
+.contract-table tbody tr:hover {
+    background: #f9fbff;
+}
+
+/* chữ đậm mã hợp đồng */
+.font-bold {
+    font-weight: 600;
+    color: #222;
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge-HD {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ví dụ trạng thái */
+.status-active {
+    background: #e6f7ee;
+    color: #1e8e3e;
+}
+
+.status-pending {
+    background: #fff4e5;
+    color: #e69500;
+}
+
+.status-expired {
+    background: #fdecea;
+    color: #d93025;
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-buttons-HD {
+    display: flex;
+    gap: 6px;
+}
+
+/* nút chung */
+.action-btn-HD {
+    border: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+/* xem */
+.view-btn-HD {
+    background: #e8f4ff;
+}
+
+.view-btn-HD:hover {
+    background: #cfe7ff;
+}
+
+/* in */
+.print-btn-HD {
+    background: #f0f5ff;
+}
+
+.print-btn-HD:hover {
+    background: #dbe6ff;
+}
+
+/* sửa */
+.update-btn-HD {
+    background: #fff7e6;
+}
+
+.update-btn-HD:hover {
+    background: #ffe7ba;
+}
+
+/* xóa */
+.delete-btn-HD {
+    background: #ffeaea;
+}
+
+.delete-btn-HD:hover {
+    background: #ffc9c9;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+/* Overlay nền mờ */
+.modal-overlay-HD {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background: rgba(0, 0, 0, 0.5); /* nền tối */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 1000;
+}
+
+/* Hộp modal */
+.modal-content-HD {
+    background: #fff;
+    padding: 25px 30px;
+    border-radius: 10px;
+    width: 400px;
+    max-width: 90%;
+
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    text-align: center;
+
+    animation: modalFade 0.25s ease;
+}
+
+/* Tiêu đề */
+.modal-content-HD h3 {
+    margin-bottom: 10px;
+    font-size: 22px;
+}
+
+/* Nội dung */
+.modal-content-HD p {
+    margin-bottom: 20px;
+    color: #555;
+}
+
+/* Nút */
+.modal-actions-HD {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* Button chung */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Button chính */
+.btn-primary-HD {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary-HD:hover {
+    background: #0056b3;
+}
+
+/* Button hủy */
+.btn-secondary-HD {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary-HD:hover {
+    background: #545b62;
+}
+
+/* Animation */
+@keyframes modalFade {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ===== FORM GROUP ===== */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+/* Label */
+.form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+/* Select box */
+.form-control {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    outline: none;
+    background: #fff;
+    transition: all 0.2s ease;
+}
+
+/* Hover */
+.form-control:hover {
+    border-color: #4096ff;
+}
+
+/* Focus */
+.form-control:focus {
+    border-color: #1677ff;
+    box-shadow: 0 0 3px rgba(22,119,255,0.3);
+}
+
+/* Dropdown option */
+.form-control option {
+    font-size: 14px;
+}
