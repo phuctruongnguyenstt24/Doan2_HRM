@@ -32,9 +32,9 @@ const AttendanceManagement = () => {
   });
 
   // Sử dụng biến môi trường
-  const API_URL = import.meta.env.VITE_API_URL || '/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-    // Thêm useEffect để log URL đang dùng
+  // Thêm useEffect để log URL đang dùng
   useEffect(() => {
     console.log('🌐 API_URL from env:', API_URL);
     console.log('🌐 Will proxy through Vite dev server');
@@ -48,37 +48,103 @@ const AttendanceManagement = () => {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   };
-
-   // Helper function để fetch với error handling tốt hơn
-  const fetchAPI = async (endpoint, options = {}) => {
-    try {
-      // Nếu đang trong development, dùng proxy
-      let url;
-      if (import.meta.env.DEV) {
-        // Sử dụng proxy của Vite
-        url = `/api${endpoint}`;
-        console.log('🔄 Dev mode - using proxy:', url);
-      } else {
-        // Production - dùng URL đầy đủ
-        url = `${API_URL}${endpoint}`;
-        console.log('🚀 Production mode - using full URL:', url);
+  // Thêm hàm này trước khi sử dụng
+  const getSampleEmployees = () => {
+    return [
+      {
+        id: '1',
+        employeeId: 'GV001',
+        name: 'Nguyễn Văn A',
+        department: 'Khoa Công Nghệ Thông Tin',
+        position: 'Giảng viên',
+        hourlyRate: 150000
+      },
+      {
+        id: '2',
+        employeeId: 'NV001',
+        name: 'Trần Thị B',
+        department: 'Phòng Đào Tạo',
+        position: 'Nhân viên',
+        hourlyRate: 80000
+      },
+      {
+        id: '3',
+        employeeId: 'GV002',
+        name: 'Lê Văn C',
+        department: 'Khoa Kinh Tế',
+        position: 'Giảng viên',
+        hourlyRate: 150000
       }
-      
-      const response = await fetch(url, {
-        ...options,
-        headers: { ...headers, ...options.headers }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('❌ API fetch error:', error);
-      throw error;
-    }
+    ];
   };
+  // Helper function để fetch với error handling tốt hơn
+  // AttendanceManagement.jsx - Sửa phần fetchAPI
+
+const fetchAPI = async (endpoint, options = {}) => {
+  try {
+    // LẤY TOKEN TRƯỚC
+    const token = localStorage.getItem('token');
+    
+    console.log('🔑 [DEBUG] Token from localStorage:', {
+      exists: !!token,
+      value: token ? `${token.substring(0, 30)}...` : 'null',
+      length: token?.length
+    });
+    
+    if (!token) {
+      console.error('❌ No token found! User may not be logged in');
+      throw new Error('Vui lòng đăng nhập lại');
+    }
+    
+    let url;
+    if (import.meta.env.DEV) {
+      url = `/api${endpoint}`;
+      console.log('🔄 Dev mode - using proxy:', url);
+    } else {
+      url = `${API_URL}${endpoint}`;
+    }
+
+    // TẠO HEADERS ĐÚNG CÁCH
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`  // QUAN TRỌNG: Phải có Bearer
+    };
+    
+    console.log('📤 Request Headers:', {
+      url,
+      method: options.method || 'GET',
+      'Authorization': headers.Authorization ? 'Bearer [TOKEN]' : 'MISSING',
+      'Content-Type': headers['Content-Type']
+    });
+
+    const response = await fetch(url, {
+      ...options,
+      headers  // Gửi headers đã tạo
+    });
+
+    if (response.status === 401) {
+      const errorText = await response.text();
+      console.error('🔐 401 Response:', errorText);
+      
+      // Xóa token cũ
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('❌ API fetch error:', error);
+    throw error;
+  }
+};
 
   // Thêm useEffect để load dữ liệu mẫu nếu API không có
   useEffect(() => {
@@ -113,11 +179,11 @@ const AttendanceManagement = () => {
   // ==================== API CALLS ====================
 
   // Lấy danh sách phòng ban
- 
+
   const fetchDepartments = async () => {
     try {
       const data = await fetchAPI('/departments');
-      
+
       if (data.success) {
         setDepartments([
           { id: 'all', name: 'Tất cả phòng ban' },
@@ -140,16 +206,26 @@ const AttendanceManagement = () => {
   };
 
   // Lấy danh sách nhân viên
+  // Sửa lại hàm fetchEmployees
   const fetchEmployees = async () => {
     try {
-      console.log('🔵 Fetching employees...');
+      console.log('🔵 Đang tải danh sách nhân viên...');
+      const token = localStorage.getItem('token');
+
+      // Kiểm tra token có tồn tại không
+      if (!token) {
+        console.warn('⚠️ Không tìm thấy token. Vui lòng đăng nhập lại.');
+        setEmployees(getSampleEmployees());
+        return;
+      }
+
       const data = await fetchAPI('/users-permissions/users?limit=100');
-      
-      // hỗ trợ cả 2 format
+
+      // Hỗ trợ cả 2 định dạng dữ liệu
       const users = data.users || data;
 
       if (!Array.isArray(users) || users.length === 0) {
-        console.log('⚠️ No users found, using sample data');
+        console.log('⚠️ Không có dữ liệu nhân viên, đang dùng dữ liệu mẫu');
         setEmployees(getSampleEmployees());
         return;
       }
@@ -163,15 +239,19 @@ const AttendanceManagement = () => {
         hourlyRate: user.hourlyRate || 80000
       }));
 
-      console.log('✅ Formatted employees:', formattedEmployees);
+      console.log('✅ Đã tải xong nhân viên:', formattedEmployees);
       setEmployees(formattedEmployees);
 
     } catch (error) {
-      console.error('❌ Error fetching employees:', error);
+      console.error('❌ Lỗi khi tải nhân viên:', error);
+      // Nếu lỗi 401, thông báo đăng nhập lại
+      if (error.message.includes('401')) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        // Có thể chuyển hướng về trang đăng nhập ở đây
+      }
       setEmployees(getSampleEmployees());
     }
   };
-
   // Lấy dữ liệu chấm công
   const fetchAttendance = async () => {
     setLoading(true);
@@ -788,7 +868,7 @@ const AttendanceManagement = () => {
                     <input
                       type="text"
                       value={selectedRecord.department || ""}
-                    disabled
+                      disabled
                       className="form-input-AT"
                     />
                   </div>

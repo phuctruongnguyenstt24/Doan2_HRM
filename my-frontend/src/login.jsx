@@ -8,25 +8,36 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Sử dụng API_URL từ env
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Helper function để fetch API
+  // Load saved credentials khi component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('savedEmail');
+    const savedPassword = localStorage.getItem('savedPassword');
+    const remember = localStorage.getItem('rememberMe') === 'true';
+    
+    if (remember && savedEmail) {
+      setFormData({
+        email: savedEmail,
+        password: savedPassword || ''
+      });
+      setRememberMe(true);
+    }
+  }, []);
+
   const fetchAPI = async (endpoint, options = {}) => {
     try {
       let url;
       
-      // Nếu đang trong development và API_URL là ngrok domain
       if (import.meta.env.DEV && API_URL.includes('ngrok-free.dev')) {
-        // Dùng proxy để tránh CORS
         url = `/api${endpoint}`;
         console.log('🔄 Dev mode with ngrok - using proxy:', url);
       } else {
-        // Production hoặc local development
         url = `${API_URL}${endpoint}`;
         console.log('🚀 Using full URL:', url);
       }
@@ -69,9 +80,23 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Lưu token và user info
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        // Xử lý ghi nhớ đăng nhập
+        if (rememberMe) {
+          localStorage.setItem('savedEmail', formData.email);
+          localStorage.setItem('savedPassword', formData.password);
+          localStorage.setItem('rememberMe', 'true');
+          // Lưu token vĩnh viễn
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        } else {
+          // Xóa dữ liệu đã lưu nếu không chọn ghi nhớ
+          localStorage.removeItem('savedEmail');
+          localStorage.removeItem('savedPassword');
+          localStorage.removeItem('rememberMe');
+          // Lưu token theo session
+          sessionStorage.setItem('token', data.token);
+          sessionStorage.setItem('user', JSON.stringify(data.user));
+        }
         
         // Chuyển hướng dựa vào role
         if (data.user.role === 'admin') {
@@ -91,31 +116,41 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    // Sử dụng API_URL cho Google OAuth
     const googleAuthUrl = API_URL.includes('ngrok-free.dev') 
       ? `/api/auth/google` 
       : `${API_URL}/auth/google`;
     window.location.href = googleAuthUrl;
   };
 
-  // Xử lý redirect từ Google OAuth
+  // Xử lý redirect từ Google OAuth và kiểm tra token
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+    const urlToken = urlParams.get('token');
     
-    if (token) {
-      localStorage.setItem('token', token);
+    if (urlToken) {
+      // Kiểm tra xem có remember me không
+      const remember = localStorage.getItem('rememberMe') === 'true';
       
-      // Fetch user info
+      if (remember) {
+        localStorage.setItem('token', urlToken);
+      } else {
+        sessionStorage.setItem('token', urlToken);
+      }
+      
       fetchAPI('/auth/me', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${urlToken}`
         }
       })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          localStorage.setItem('user', JSON.stringify(data.user));
+          if (remember) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+          } else {
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+          }
+          
           if (data.user.role === 'admin') {
             navigate('/dashboard');
           } else {
@@ -127,6 +162,21 @@ const Login = () => {
         console.error('Error fetching user info:', error);
         setError('Không thể lấy thông tin người dùng');
       });
+    }
+  }, [navigate]);
+
+  // Kiểm tra token khi load lại trang
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    if (storedToken && storedUser) {
+      const userData = JSON.parse(storedUser);
+      if (userData.role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/employee/teacherDashboard');
+      }
     }
   }, [navigate]);
 
@@ -177,7 +227,11 @@ const Login = () => {
 
               <div className="form-options">
                 <label className="remember-me">
-                  <input type="checkbox" />
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
                   <span>Ghi nhớ đăng nhập</span>
                 </label>
                 <Link to="/forgot-password" className="forgot-password">

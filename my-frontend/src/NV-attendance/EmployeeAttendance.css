@@ -13,12 +13,14 @@
   --radius: 12px;
 }
 
+ 
 .attendance-page {
   padding: 20px;
-  max-width: 1000px;
+   
   margin: 0 auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text-main);
+  background: #f8fafc;
 }
 
 /* Card thời gian hiện tại */

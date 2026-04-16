@@ -3,7 +3,9 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import axios from 'axios';
 
 // ✅ Lấy API URL từ env
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.DEV 
+  ? '/api'  // Vite sẽ proxy đến ngrok
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 
 // ✅ Tạo axios instance với cấu hình mặc định
 const api = axios.create({
@@ -13,7 +15,6 @@ const api = axios.create({
   },
   timeout: 10000,
 });
-
 const UniversityContext = createContext();
 
 export const useUniversity = () => {

@@ -97,7 +97,7 @@
   flex-shrink: 0;
 }
 
-.user-avatar {
+.user-avatar-teacher {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -119,24 +119,24 @@
   background: #48bb78;
 }
 
-.user-info {
+.user-info-teacher {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.user-name {
+.user-name-teacher {
   font-weight: 600;
   color: white;
-  font-size: 14px;
+  font-size: 24px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.user-role {
-  font-size: 11px;
+.user-role-teacher {
+  font-size: 14px;
   color: #a0aec0;
   margin-top: 2px;
 }
@@ -318,6 +318,91 @@
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
   display: none;
+}
+
+/* Badge cho collapsed sidebar */
+.nav-badge-collapsed {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  animation: pulse 2s infinite;
+}
+
+/* Animation cho badge mới */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Hiệu ứng khi có tin nhắn mới */
+.nav-link {
+  position: relative;
+}
+
+.nav-link .nav-badge {
+  margin-left: auto;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  animation: bounce 1s ease;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* Icon khi có tin nhắn */
+.nav-link i.fa-comment-dots {
+  position: relative;
+}
+
+/* Tooltip cho collapsed mode */
+.nav-link:hover::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-left: 10px;
 }
 
 /* Responsive */

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react'; // Thêm useEffect
+// sidebar.jsx - Phiên bản đã cập nhật
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useTheme } from './ThemeContext'; // Thêm import useTheme
 import {
   FaTachometerAlt,
   FaUsers,
@@ -21,16 +23,16 @@ import {
   FaUserShield,
   FaDatabase,
   FaCogs,
-  FaHome
+  FaHome,
+  FaComment
 } from 'react-icons/fa';
 import './sidebar.css';
- 
 
 const Sidebar = ({ collapsed, onToggle, onClose }) => {
+  const { settings } = useTheme(); // Lấy settings từ theme context
   const [isCollapsed, setIsCollapsed] = useState(collapsed || false);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const navigate = useNavigate();
-
 
   const toggleSubmenu = (menuName) => {
     if (activeSubmenu === menuName) {
@@ -50,19 +52,21 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
   const toggleSidebar = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-
-    // Gọi callback từ layout nếu có
     if (onToggle) {
       onToggle(newState);
     }
   };
 
   const handleLogout = () => {
-    // Xóa token và thông tin user
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    // Chuyển hướng về trang login
     navigate('/login');
+  };
+
+  // Style cho sidebar dựa trên settings
+  const sidebarStyle = {
+    backgroundColor: settings.sidebarColor,
+    color: settings.darkMode ? '#f3f4f6' : '#ffffff',
   };
 
   const menuItems = [
@@ -78,7 +82,6 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
       path: '/employees',
       submenu: [
         { name: 'Danh sách nhân viên', path: '/employees/list' }
-
       ]
     },
     {
@@ -86,9 +89,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
       icon: <FaSitemap />,
       path: '/organization',
       submenu: [
-
         { name: 'Quản lí Khoa', path: '/organization/departments' },
-
         { name: 'Quản lí Phòng ban', path: '/organization/OfficeManagement' }
       ]
     },
@@ -99,7 +100,6 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
       submenu: [
         { name: 'Danh sách hợp đồng', path: '/contracts/listHD' },
         { name: 'Tạo hợp đồng mới', path: '/contracts/createHD' },
-       
       ]
     },
     {
@@ -110,73 +110,27 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
         { name: 'Quản lí Chấm công', path: '/attendance/AttendanceManagement' },
         { name: 'Báo cáo chấm công', path: '/attendance/AttendanceReport' },
         { name: 'Quản lý công tác', path: '/attendance/BusinessTrip' }
-
-
       ]
     },
     {
       name: 'Đào tạo & Bồi dưỡng',
       icon: <FaGraduationCap />,
       path: '/training/courses',
-      
     },
     {
-      name: 'Khen thưởng & Kỷ luật',
-      icon: <FaAward />,
-      path: '/reward-discipline',
-      submenu: [
-        { name: 'Khen thưởng', path: '/reward-discipline/rewards' },
-        { name: 'Kỷ luật', path: '/reward-discipline/disciplines' },
-        { name: 'Quy chế', path: '/reward-discipline/rules' },
-        { name: 'Thống kê', path: '/reward-discipline/statistics' }
-      ]
+      name: 'Nhắn tin',
+      icon: <FaComment />,
+      path: '/chat-NV/chatNV',
     },
-    {
-      name: 'Lương & Phúc lợi',
-      icon: <FaMoneyBillWave />,
-      path: '/salary-benefits',
-      submenu: [
-        { name: 'Bảng lương', path: '/salary-benefits/PayrollBenefits' },
-   
-     
-     
-      ]
-    },
-    // {
-    //   name: 'Báo cáo & Thống kê',
-    //   icon: <FaChartBar />,
-    //   path: '/reports',
-    //   submenu: [
-    //     { name: 'Báo cáo nhân sự', path: '/reports/hr' },
-    //     { name: 'Báo cáo tài chính', path: '/reports/finance' },
-    //     { name: 'Thống kê tổng hợp', path: '/reports/overview' },
-    //     { name: 'Báo cáo tùy chỉnh', path: '/reports/custom' },
-    //     { name: 'Xuất báo cáo', path: '/reports/export' }
-    //   ]
-    // },
     {
       name: 'Người dùng & Phân quyền',
       icon: <FaUserShield />,
       path: '/users-permissions',
       submenu: [
         { name: 'Quản lý người dùng', path: '/users-permissions/UserManagement' },
- 
         { name: 'Lịch sử truy cập', path: '/users-permissions/AccessLog' }
       ]
     },
-
-    {
-      name: 'Thông báo & Tin nội bộ',
-      icon: <FaBell />,
-      path: '/notifications',
-      submenu: [
-        { name: 'Thông báo', path: '/notifications/list' },
-        { name: 'Tin nội bộ', path: '/notifications/internal-news' },
-        { name: 'Gửi thông báo', path: '/notifications/send' },
-        { name: 'Cài đặt thông báo', path: '/notifications/settings' }
-      ]
-    }
-
   ];
 
   const getUserInfo = () => {
@@ -185,17 +139,13 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
       if (user && user.avatar) {
         return user;
       }
-
-      // Nếu không có user trong localStorage, thử lấy từ URL
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
-
       if (token) {
         try {
           const base64Url = token.split('.')[1];
           const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
           const decodedToken = JSON.parse(window.atob(base64));
-
           if (decodedToken.avatar) {
             localStorage.setItem('user', JSON.stringify(decodedToken));
             return decodedToken;
@@ -204,7 +154,6 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
           console.error('Error decoding token:', e);
         }
       }
-
       return {
         name: 'Admin',
         role: 'Quản trị viên',
@@ -224,7 +173,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
 
   return (
     <>
-      <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} style={sidebarStyle}>
         {/* Sidebar Header */}
         <div className="sidebar-header">
           {!isCollapsed && (
@@ -232,13 +181,17 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
               <div className="logo">
                 <FaHome />
               </div>
-              <div className="logo-text">
+              <div className="logo-text" onClick={() => window.location.href="/"}>
                 <h2>HR System</h2>
                 <p>Quản lý University</p>
               </div>
             </div>
           )}
-          <button className="toggle-btn" onClick={toggleSidebar}>
+          <button 
+            className="toggle-btn" 
+            onClick={toggleSidebar}
+            style={{ color: settings.darkMode ? '#f3f4f6' : '#fff' }}
+          >
             {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
           </button>
         </div>
@@ -273,7 +226,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
                     <span className="menu-icon">{item.icon}</span>
                     {!isCollapsed && (
                       <>
-                        <span className="menu-text">{item.name}</span>
+                        <span className="menu-text-sidebar">{item.name}</span>
                         <span className="arrow">
                           {activeSubmenu === item.name ? '▾' : '▸'}
                         </span>
@@ -289,7 +242,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
                           className={({ isActive }) =>
                             `submenu-item ${isActive ? 'active' : ''}`
                           }
-                          onClick={onClose} // Đóng menu mobile khi click item
+                          onClick={onClose}
                         >
                           {subItem.name}
                         </NavLink>
@@ -303,10 +256,10 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
                   className={({ isActive }) =>
                     `menu-item ${isActive ? 'active' : ''}`
                   }
-                  onClick={onClose} // Đóng menu mobile khi click item
+                  onClick={onClose}
                 >
                   <span className="menu-icon">{item.icon}</span>
-                  {!isCollapsed && <span className="menu-text">{item.name}</span>}
+                  {!isCollapsed && <span className="menu-text-sidebar">{item.name}</span>}
                 </NavLink>
               )}
             </div>
@@ -318,7 +271,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
           <NavLink
             to="/settings"
             className={({ isActive }) => `bottom-menu-item ${isActive ? 'active' : ''}`}
-            onClick={onClose} // Đóng menu mobile khi click item
+            onClick={onClose}
           >
             <FaCog className="bottom-icon" />
             {!isCollapsed && <span>Cài đặt</span>}
@@ -343,7 +296,7 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
         )}
       </div>
 
-      {/* Mobile Toggle Button - chỉ hiển thị trên mobile */}
+      {/* Mobile Toggle Button */}
       <button className="mobile-toggle-btn" onClick={toggleSidebar}>
         <FaBars />
       </button>

@@ -20,11 +20,7 @@ const ListHD = () => {
     useEffect(() => {
         loadContracts();
         loadStats();
-        // Tự động kiểm tra và cập nhật trạng thái mỗi ngày
-        const interval = setInterval(() => {
-            checkAndUpdateStatus();
-        }, 86400000); // 24 giờ
-        
+        const interval = setInterval(() => checkAndUpdateStatus(), 3600000); // 1 giờ
         return () => clearInterval(interval);
     }, []);
 
@@ -33,7 +29,11 @@ const ListHD = () => {
         setLoading(true);
         try {
             const data = await contractService.getAllContracts();
-            setContracts(data);
+            const updatedData = data.map(contract => ({
+                ...contract,
+                status: getAutoStatus(contract)
+            }));
+            setContracts(updatedData);
         } catch (error) {
             console.error('Error loading contracts:', error);
             alert(error.message || 'Có lỗi xảy ra khi tải dữ liệu');
@@ -41,7 +41,6 @@ const ListHD = () => {
             setLoading(false);
         }
     };
-
     // Hàm tải thống kê
     const loadStats = async () => {
         try {
@@ -55,15 +54,21 @@ const ListHD = () => {
     // Hàm kiểm tra và cập nhật trạng thái
     const checkAndUpdateStatus = async () => {
         try {
-            const result = await contractService.checkAndUpdateStatus();
-            if (result.updatedCount > 0) {
-                alert(`Đã cập nhật ${result.updatedCount} hợp đồng`);
-                loadContracts(); // Tải lại danh sách sau khi cập nhật
-                loadStats(); // Tải lại thống kê
+            let updatedCount = 0;
+            for (const contract of contracts) {
+                const autoStatus = getAutoStatus(contract);
+                if (autoStatus !== contract.status) {
+                    await contractService.updateContractStatus(contract._id, autoStatus, contract.endDate);
+                    updatedCount++;
+                }
+            }
+            if (updatedCount > 0) {
+                alert(`Đã cập nhật ${updatedCount} hợp đồng`);
+                loadContracts();
+                loadStats();
             }
         } catch (error) {
             console.error('Error checking status:', error);
-            alert(error.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
         }
     };
 
@@ -119,14 +124,28 @@ const ListHD = () => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
+    const getAutoStatus = (contract) => {
+        if (contract.status === 'Hủy bỏ' || contract.status === 'Tạm ngưng') return contract.status;
 
+        const today = new Date();
+        const start = new Date(contract.startDate);
+        const end = new Date(contract.endDate);
+
+        if (start > today) return 'Chưa bắt đầu';
+        if (end < today) return 'Đã hết hạn';
+
+        const daysRemaining = Math.round((end - today) / (1000 * 60 * 60 * 24));
+        if (daysRemaining <= 30) return 'Sắp hết hạn';
+
+        return 'Đang hoạt động';
+    };
     // Xem chi tiết hợp đồng
     const handleViewDetail = async (contract) => {
         try {
             // Lấy chi tiết đầy đủ từ API
             const detail = await contractService.getContractById(contract._id);
             setSelectedContract(detail);
-            
+
             // Hiển thị modal chi tiết (bạn có thể tạo modal riêng)
             alert(`Chi tiết hợp đồng:
 Mã: ${detail.code}
@@ -272,20 +291,16 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
     const updateContractStatus = async () => {
         try {
             if (selectedContract) {
-                await contractService.updateContractStatus(
-                    selectedContract._id,
-                    updateData.status,
-                    updateData.endDate
-                );
-
-                alert('Cập nhật trạng thái thành công!');
-                loadContracts(); // Tải lại danh sách
-                loadStats(); // Tải lại thống kê
+                const finalStatus = getAutoStatus({ ...selectedContract, endDate: updateData.endDate, status: updateData.status });
+                await contractService.updateContractStatus(selectedContract._id, finalStatus, updateData.endDate);
+                alert('Cập nhật thành công!');
+                loadContracts();
+                loadStats();
                 setShowUpdateModal(false);
             }
         } catch (error) {
             console.error('Error updating status:', error);
-            alert(error.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+            alert(error.message || 'Có lỗi xảy ra khi cập nhật');
         }
     };
 
@@ -326,10 +341,10 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
             // Chuyển đổi dữ liệu thành CSV
             const headers = ['Mã hợp đồng', 'Khách hàng', 'CMND/CCCD', 'Loại', 'Ngày bắt đầu', 'Ngày kết thúc', 'Số tiền', 'File', 'Trạng thái'];
             const csvRows = [];
-            
+
             // Thêm headers
             csvRows.push(headers.join(','));
-            
+
             // Thêm dữ liệu
             contracts.forEach(contract => {
                 const row = [
@@ -345,7 +360,7 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
                 ];
                 csvRows.push(row.join(','));
             });
-            
+
             const csvData = csvRows.join('\n');
             const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' }); // Thêm BOM cho UTF-8
             const url = URL.createObjectURL(blob);
@@ -354,7 +369,7 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
             link.download = `hop-dong_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
             URL.revokeObjectURL(url);
-            
+
             alert(`Đã xuất ${contracts.length} hợp đồng`);
         } catch (error) {
             console.error('Error exporting data:', error);
@@ -396,7 +411,7 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
                     <button className="btn btn-secondary" onClick={handleExportExcel}>
                         Xuất Excel
                     </button>
-                  
+
                     <button className="btn btn-info" onClick={() => navigate('/contracts/createHD')}>
                         + Thêm mới
                     </button>
@@ -428,7 +443,7 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
                                     <th>File</th>
                                     <th>Trạng thái</th>
                                     <th>Thao tác</th>
-                                   
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -456,7 +471,7 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
                                                 >
                                                     👁️
                                                 </button>
-                                              
+
                                                 <button
                                                     className="action-btn-HD print-btn-HD"
                                                     onClick={() => handlePrint(contract)}
@@ -512,10 +527,10 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
                     <div className="modal-content-HD">
                         <h3>Cập nhật trạng thái hợp đồng</h3>
                         <p>Mã hợp đồng: <strong>{selectedContract.code}</strong></p>
-                        
+
                         <div className="form-group">
                             <label>Trạng thái:</label>
-                            <select 
+                            <select
                                 className="form-control"
                                 value={updateData.status}
                                 onChange={handleStatusChange}

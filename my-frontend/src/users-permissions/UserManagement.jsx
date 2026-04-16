@@ -37,40 +37,42 @@ const UserManagement = () => {
   // Sử dụng API_URL từ env
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Helper function để fetch API
-  const fetchAPI = async (endpoint, options = {}) => {
-    try {
-      let url;
-      
-      // Nếu đang trong development và API_URL là ngrok domain
-      if (import.meta.env.DEV && API_URL.includes('ngrok-free.dev')) {
-        // Dùng proxy để tránh CORS
-        url = `/api${endpoint}`;
-        console.log('🔄 Dev mode with ngrok - using proxy:', url);
-      } else {
-        // Production hoặc local development
-        url = `${API_URL}${endpoint}`;
-        console.log('🚀 Using full URL:', url);
-      }
-      
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-          ...options.headers
-        },
-        credentials: 'include'
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('❌ API fetch error:', error);
-      throw error;
+const fetchAPI = async (endpoint, options = {}) => {
+  try {
+    // Đảm bảo endpoint bắt đầu bằng /
+    let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    let url;
+    // Nếu đang trong development và API_URL là ngrok domain
+    if (import.meta.env.DEV && API_URL.includes('ngrok-free.dev')) {
+      // Dùng proxy - thêm /api vào đầu
+      url = `/api${cleanEndpoint}`;
+      console.log('🔄 Dev mode with ngrok - using proxy:', url);
+    } else {
+      // Production hoặc local development
+      // API_URL đã có /api ở cuối, không thêm nữa
+      url = `${API_URL}${cleanEndpoint}`;
+      console.log('🚀 Using full URL:', url);
     }
-  };
+
+    const token = localStorage.getItem('token');
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers
+      },
+      credentials: 'include'
+    });
+
+    return response;
+  } catch (error) {
+    console.error('❌ API fetch error:', error);
+    throw error;
+  }
+};
 
   // Fetch users
   const fetchUsers = async (page = 1) => {
@@ -160,18 +162,18 @@ const UserManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Debug: In ra console để xem cấu trúc
         console.log('📊 Access Logs API Response:', data);
         console.log('📝 Logs array:', data.logs);
         console.log('🔍 First log userId:', data.logs?.[0]?.userId);
-        
+
         // Kiểm tra xem userId có được populate không
         if (data.logs && data.logs.length > 0) {
           console.log('✅ User name from populate:', data.logs[0].userId?.name);
           console.log('✅ User email from populate:', data.logs[0].userId?.email);
         }
-        
+
         setAccessLogs(data.logs || []);
         setPagination(data.pagination);
       }
@@ -237,7 +239,7 @@ const UserManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Sửa: API trả về { success, data: { user, accessLogs, stats } }
         if (data.success && data.data) {
           setSelectedUser({
@@ -405,9 +407,7 @@ const UserManagement = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <button className="btn-search-UM" onClick={handleSearch}>
-            Search
-          </button>
+
         </div>
 
         {activeTab === 'logs' && (

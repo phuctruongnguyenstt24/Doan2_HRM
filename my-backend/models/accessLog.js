@@ -1,3 +1,4 @@
+// models/AccessLog.js
 const mongoose = require('mongoose');
 
 const accessLogSchema = new mongoose.Schema({
@@ -6,11 +7,27 @@ const accessLogSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  // Đã bỏ comment userEmail và userName để đồng bộ với User model
-  // Thông tin user sẽ được lấy qua populate từ User model
   action: {
     type: String,
-    enum: ['login', 'logout', 'page_view', 'api_call', 'data_update'],
+    enum: [
+      'login', 
+      'logout', 
+      'register',
+      'update_user',      // Giữ lại
+      'delete_user',      // Giữ lại
+      // 'view_users',     // ĐÃ XÓA
+      // 'view_user_detail', // ĐÃ XÓA
+      // 'view_logs',      // ĐÃ XÓA
+     
+      'block_ip',
+      'manage_contracts',
+      'manage_attendance',
+      'manage_salary',
+     
+      'manage_training',
+      'manage_trips',
+      'other'
+    ],
     required: true
   },
   endpoint: {
@@ -39,9 +56,8 @@ const accessLogSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes để tối ưu truy vấn
+// Indexes
 accessLogSchema.index({ userId: 1, timestamp: -1 });
-// Đã xóa index trên userEmail vì không còn field này
 accessLogSchema.index({ action: 1 });
 accessLogSchema.index({ timestamp: -1 });
 accessLogSchema.index({ ipAddress: 1 });

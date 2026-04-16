@@ -1,8 +1,4 @@
-
 const express = require('express');
-
-
-
 const cors = require('cors');
 const mongoose = require('mongoose');
 const passport = require('passport');
@@ -56,11 +52,8 @@ const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB Connected Successfully');
-    
-    const Office = require('./models/Office');
-    console.log('✅ Office model loaded');
   } catch (error) {
-     console.log(process.env.MONGODB_URI);
+    console.log(process.env.MONGODB_URI);
     console.error('❌ MongoDB Connection Error:', error);
     process.exit(1);
   }
@@ -74,21 +67,16 @@ connectDB();
 const User = require('./models/User');
 
 // ====================
-// MIDDLEWARE - SET USER FROM TOKEN (PHẢI CHẠY TRƯỚC ACCESS LOG)
+// MIDDLEWARE - SET USER FROM TOKEN
 // ====================
 const jwt = require('jsonwebtoken');
 
 const setUserFromToken = async (req, res, next) => {
   try {
-    // Lấy token từ header Authorization
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-      
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Tìm user (không lấy password)
       const user = await User.findById(decoded.id).select('-password');
       if (user) {
         req.user = user;
@@ -96,97 +84,16 @@ const setUserFromToken = async (req, res, next) => {
     }
   } catch (error) {
     // Token không hợp lệ hoặc hết hạn - vẫn cho request đi tiếp
-    // req.user sẽ là undefined
   }
-  
   next();
 };
 
-// Áp dụng middleware set user từ token (chạy TRƯỚC access log)
 app.use(setUserFromToken);
 
 // ====================
-// ACCESS LOG MIDDLEWARE - GLOBAL (LOG TẤT CẢ REQUEST)
+// ACCESS LOG MIDDLEWARE - ĐÃ ĐƯỢC TÁCH RA FILE RIÊNG
 // ====================
-const AccessLog = require('./models/accessLog');
-
-const accessLogMiddleware = async (req, res, next) => {
-  // Bỏ qua các request không cần log
-  const skipPaths = ['/', '/favicon.ico', '/api/test', '/api/auth/config', '/_next'];
-  if (skipPaths.some(path => req.path === path) || req.path.startsWith('/_next')) {
-    return next();
-  }
-
-  const startTime = Date.now();
-  
-  // Ghi lại response để bắt dữ liệu sau khi hoàn thành
-  const originalSend = res.send;
-  res.send = function(data) {
-    const duration = Date.now() - startTime;
-    
-    // Log nếu có user và không phải OPTIONS request
-    if (req.user && req.method !== 'OPTIONS') {
-      createAccessLogAsync(req, res.statusCode, duration);
-    }
-    
-    // Gọi hàm send gốc
-    originalSend.call(this, data);
-  };
-
-  next();
-};
-
-async function createAccessLogAsync(req, statusCode, duration) {
-  try {
-    const user = req.user;
-    
-    if (!user) return;
-
-    const logData = {
-      userId: user._id,
-      // userEmail: user.email,
-      // userName: user.name || user.email.split('@')[0],
-      action: determineAction(req),
-      endpoint: req.originalUrl,
-      ipAddress: getClientIp(req),
-      userAgent: req.headers['user-agent'] || '',
-      status: statusCode >= 400 ? 'failed' : 'success',
-      details: JSON.stringify({
-        method: req.method,
-        statusCode,
-        duration: `${duration}ms`
-      })
-    };
-
-    await AccessLog.create(logData);
-    console.log(`📝 Log created: ${logData.action} - ${user.email}`);
-
-  } catch (error) {
-    console.error('❌ Error creating access log:', error);
-  }
-}
-
-function determineAction(req) {
-  const { path, method } = req;
-  
-  if (path.includes('/auth/login')) return 'login';
-  if (path.includes('/auth/logout')) return 'logout';
-  if (path.includes('/auth/google')) return 'login';
-  if (method === 'GET' && !path.startsWith('/api/')) return 'page_view';
-  if (method === 'GET') return 'api_call';
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) return 'data_update';
-  
-  return 'api_call';
-}
-
-function getClientIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0] || 
-         req.socket?.remoteAddress || 
-         req.ip || 
-         'unknown';
-}
-
-// Áp dụng access log middleware GLOBAL (sau khi đã set user)
+const accessLogMiddleware = require('./middleware/accessLogMiddleware');
 app.use(accessLogMiddleware);
 
 // ====================
@@ -206,11 +113,11 @@ console.log('- Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Not 
 console.log('- Callback URL:', process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback');
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
-    proxy: true
-  },
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
+  proxy: true
+},
   async (accessToken, refreshToken, profile, done) => {
     try {
       console.log('🔵 Google OAuth Profile Received:', {
@@ -218,16 +125,16 @@ passport.use(new GoogleStrategy({
         email: profile.emails?.[0]?.value,
         name: profile.displayName
       });
-      
+
       let user = await User.findOne({ googleId: profile.id });
-      
+
       if (user) {
         console.log('✅ User found by Google ID:', user.email);
         return done(null, user);
       }
-      
+
       user = await User.findOne({ email: profile.emails[0].value });
-      
+
       if (user) {
         console.log('✅ User found by email, updating Google ID:', user.email);
         user.googleId = profile.id;
@@ -243,25 +150,7 @@ passport.use(new GoogleStrategy({
           password: null
         });
       }
-      
-      // Tạo log riêng cho Google login (đảm bảo có log ngay cả khi middleware chưa kịp chạy)
-      try {
-        await AccessLog.create({
-          userId: user._id,
-          userEmail: user.email,
-          userName: user.name || user.email.split('@')[0],
-          action: 'login',
-          endpoint: '/auth/google/callback',
-          ipAddress: 'OAuth Callback',
-          userAgent: 'Google OAuth',
-          status: 'success',
-          details: 'Login via Google OAuth'
-        });
-        console.log(`📝 Google login log created for: ${user.email}`);
-      } catch (logError) {
-        console.error('Error creating Google login log:', logError);
-      }
-      
+
       return done(null, user);
     } catch (error) {
       console.error('❌ Google OAuth Error:', error);
@@ -293,6 +182,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const authRoutes = require('./routes/auth');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const userRoutes = require('./routes/userRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
@@ -303,6 +193,7 @@ const attendanceRoutes = require('./routes/attendance');
 const salaryRoutes = require('./routes/salary');
 const businessTripRoutes = require('./routes/businessTrip');
 const courseRoutes = require('./routes/trainingRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 // ====================
 // ROUTES
@@ -337,8 +228,9 @@ app.get('/api/auth/config', (req, res) => {
   });
 });
 
-// Mount các routes
+// Mount các routes (ĐÃ BỎ /api/access-logs route)
 app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users-permissions', userRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -349,6 +241,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/salary', salaryRoutes);
 app.use('/api/business-trips', businessTripRoutes);
 app.use('/api/training', courseRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Static files cho uploads
 app.use('/uploads', express.static(uploadDir));
@@ -386,16 +279,14 @@ app.use((req, res, next) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err);
-  
-  // Multer error
+
   if (err.name === 'MulterError') {
     return res.status(400).json({
       success: false,
       message: err.message
     });
   }
-  
-  // Mongoose validation error
+
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
@@ -403,15 +294,14 @@ app.use((err, req, res, next) => {
       errors: Object.values(err.errors).map(e => e.message)
     });
   }
-  
-  // Duplicate key error
+
   if (err.code === 11000) {
     return res.status(400).json({
       success: false,
       message: 'Dữ liệu đã tồn tại trong hệ thống'
     });
   }
-  
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',
@@ -420,17 +310,34 @@ app.use((err, req, res, next) => {
 });
 
 // ====================
+// CREATE HTTP SERVER
+// ====================
+const server = require('http').createServer(app);
+
+// ====================
+// INITIALIZE SOCKET.IO
+// ====================
+const { initializeSocket } = require('./socket');
+const io = initializeSocket(server);
+app.set('io', io);
+
+// ====================
 // START SERVER
 // ====================
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('\n===================================');
   console.log('🚀 Server Started Successfully');
   console.log('===================================');
   console.log(`✅ Server URL: http://localhost:${PORT}`);
+  console.log(`✅ Socket.IO Server: Running on port ${PORT}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
   console.log(`🗄️  MongoDB: ${process.env.MONGODB_URI}`);
   console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Set' : 'Not set'}`);
   console.log('📌 Access Log Middleware: GLOBAL - All requests will be logged');
+  console.log('📌 Access Log Features:');
+  console.log('   ✅ Auto-login logging');
+  console.log('   ✅ User action logging');
+  console.log('   ❌ View logs feature: DISABLED');
   console.log('📌 Available Routes:');
   console.log('   GET   /api/test');
   console.log('   GET   /api/auth/config');
@@ -447,5 +354,11 @@ app.listen(PORT, () => {
   console.log('   GET   /api/contracts/search?q=:term');
   console.log('   POST  /api/contracts/check-status');
   console.log('   GET   /api/contracts/stats/summary');
+  console.log('   📨 CHAT ROUTES:');
+  console.log('   GET   /api/messages/employees');
+  console.log('   GET   /api/messages/conversations');
+  console.log('   GET   /api/messages/messages/:userId');
+  console.log('   POST  /api/messages/send');
+  console.log('   GET   /api/messages/unread-count');
   console.log('===================================\n');
 });

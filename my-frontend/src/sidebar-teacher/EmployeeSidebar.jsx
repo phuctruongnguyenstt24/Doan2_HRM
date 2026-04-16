@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate ,Outlet } from 'react-router-dom';
- 
-
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import useUnreadMessages from '../NV-chat/useUnreadMessages'; // Import hook
 import './EmployeeSidebar.css';
 
 const EmployeeSidebar = ({ children }) => {
@@ -12,6 +11,32 @@ const EmployeeSidebar = ({ children }) => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+
+  
+  // Lấy số tin nhắn chưa đọc
+ 
+  const { unreadCount, refreshUnreadCount } = useUnreadMessages();
+
+
+  // Refresh unread count khi rời khỏi trang chat
+  useEffect(() => {
+    // Nếu đang ở trang chat, không cần refresh (vì đã đọc tin nhắn ở đó)
+    // Khi chuyển sang trang khác, refresh lại
+    if (!location.pathname.includes('/employee/Chatemployee')) {
+      refreshUnreadCount();
+    }
+  }, [location.pathname, refreshUnreadCount]);
+
+  // Lắng nghe sự kiện khi đọc tin nhắn xong
+  useEffect(() => {
+    const handleMessagesRead = () => {
+      refreshUnreadCount();
+    };
+    
+    window.addEventListener('messages-read', handleMessagesRead);
+    return () => window.removeEventListener('messages-read', handleMessagesRead);
+  }, [refreshUnreadCount]);
+  
   // Kiểm tra kích thước màn hình
   useEffect(() => {
     const handleResize = () => {
@@ -34,22 +59,29 @@ const EmployeeSidebar = ({ children }) => {
 
   const menuItems = [
     {
-      path: '/employee/teacherDashboard',
+      path: '/employee/NVDashboard',
       icon: 'fas fa-home',
       label: 'Trang chủ',
       roles: ['admin', 'manager', 'user', 'lecturer']
     },
     {
-      path: '/employee/attendance',
+      path: '/employee/NVattendance',
       icon: 'fas fa-fingerprint',
       label: 'Chấm công',
       roles: ['admin', 'manager', 'user', 'lecturer']
     },
     {
-      path: '/employee/training',
+      path: '/employee/NVtraining',
       icon: 'fas fa-graduation-cap',
       label: 'Đào tạo',
       roles: ['admin', 'manager', 'user', 'lecturer']
+    },
+    {
+      path: '/employee/Chatemployee',
+      icon: 'fas fa-comment-dots', // Đổi icon cho phù hợp
+      label: 'Phản hồi',
+      roles: ['admin', 'manager', 'user', 'lecturer'],
+      badge: unreadCount // Thêm badge từ hook
     },
     {
       path: '/employee/leave-request',
@@ -175,16 +207,16 @@ const EmployeeSidebar = ({ children }) => {
             <img 
               src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=4F46E5&color=fff`} 
               alt={user.name}
-              className="user-avatar"
+              className="user-avatar-teacher"
             />
             {!isCollapsed && (
               <div className="user-status online"></div>
             )}
           </div>
           {!isCollapsed && (
-            <div className="user-info">
-              <span className="user-name">{user.name || 'Nhân viên'}</span>
-              <span className="user-role">
+            <div className="user-info-teacher">
+              <span className="user-name-teacher">{user.name || 'Nhân viên'}</span>
+              <span className="user-role-teacher">
                 {user.role === 'admin' ? 'Quản trị viên' : 
                  user.role === 'manager' ? 'Quản lý' : 
                  user.role === 'user' ? 'Nhân viên' : 'Giảng viên'}
@@ -207,8 +239,12 @@ const EmployeeSidebar = ({ children }) => {
                   >
                     <i className={item.icon}></i>
                     {!isCollapsed && <span>{item.label}</span>}
-                    {item.badge && !isCollapsed && (
-                      <span className="nav-badge">{item.badge}</span>
+                    {item.badge > 0 && !isCollapsed && ( // Hiển thị badge nếu > 0
+                      <span className="nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>
+                    )}
+                    {/* Hiển thị badge nhỏ khi sidebar collapsed */}
+                    {item.badge > 0 && isCollapsed && (
+                      <span className="nav-badge-collapsed">{item.badge > 99 ? '99+' : item.badge}</span>
                     )}
                   </Link>
                 </li>
@@ -253,9 +289,9 @@ const EmployeeSidebar = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-   <main className="employee-main-content" onClick={closeMobileMenu}>
-  <Outlet /> {/* Thay vì {children} */}
-</main>
+      <main className="employee-main-content" onClick={closeMobileMenu}>
+        <Outlet />
+      </main>
     </div>
   );
 };

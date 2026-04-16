@@ -1,10 +1,17 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { UniversityProvider } from './contexts/UniversityContext'; // Import Provider
+import { ThemeProvider } from './ThemeContext';
 //admin
 import Login from './login';
+import ForgotPassword from './ForgotPassword';
+ 
+ 
 import Register from './register';
 import Layout from './layout';
+import ChangePassword from './change-password';
+import Profile from './profile';
+import Settings from './settings';
 import Dashboard from './dashboard';
 import Employees from './employees/list';
 import Organization from './organization/departments';
@@ -18,7 +25,9 @@ import AttendanceReport from './attendance/AttendanceReport';
 //Dành cho giảng viên , nhân viên
 import Sidebarteacher from './sidebar-teacher/EmployeeSidebar';
 import EmployeeAttendance from './NV-attendance/EmployeeAttendance';
-import TeacherDashboard from './Teachers/TeacherDashboard';
+import NVDashboard from './NV/NVDashboard';
+import NVTraining from './NV/NVTraining';
+import NVchat from './NV-chat/ChatEmployee';
 // import TeacherTraining from './Teachers/TeacherTraining';
 // import EmployeeLeaveRequest from './NV-leave/LeaveRequest'; // Thêm nếu có
 // import EmployeeSalary from './NV-salary/Salary'; // Thêm nếu có
@@ -31,29 +40,35 @@ import TeacherDashboard from './Teachers/TeacherDashboard';
 import BusinessTrip from './attendance/BusinessTrip';
  
 import Tranining from './training/courses';
-import RewardsPage from './reward-discipline/rewards';
-import DisciplinesPage from './reward-discipline/disciplines';
-import RulesPage from './reward-discipline/rules';
-import StatisticsPage from './reward-discipline/statistics';
-import PayrollBenefits from './salary-benefits/PayrollBenefits';
+
+import Chat from './chat-NV/chatNV';
+
+
 import UserManagement from './users-permissions/UserManagement';
 
 function App() {
   return (
     <UniversityProvider> {/* Bọc toàn bộ Router trong Provider */}
+    <ThemeProvider> 
       <Router>
         <Routes>
           {/* Public routes - không cần Layout */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword/>}/>
+       
           <Route path="/register" element={<Register />} />
           
           {/* Employee routes - sử dụng EmployeeSidebar */}
           <Route path="/employee" element={<Sidebarteacher />}>
             {/* Dashboard */}
-            <Route path="teacherDashboard" element={<TeacherDashboard />} />
-            
+            <Route path="NVDashboard" element={<NVDashboard />} />
+            <Route path="NVtraining" element={<NVTraining/>}/>
             {/* Attendance */}
-            <Route path="attendance" element={<EmployeeAttendance />} />
+            <Route path="NVattendance" element={<EmployeeAttendance />} />
+
+            <Route path="Chatemployee" element={<NVchat/>}/>
+
+
             
             {/* Training */}
             {/* <Route path="training" element={<TeacherTraining />} />
@@ -81,6 +96,9 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile/>}/>
+                 <Route path="/settings" element={<Settings/>}/>
+          <Route path="/change-password" element={<ChangePassword />} />
             
             {/* Employees */}
             <Route path="employees/list" element={<Employees />} />
@@ -102,22 +120,19 @@ function App() {
             <Route path="training/courses" element={<Tranining />} />
             
             {/* Reward & Discipline */}
-            <Route path="reward-discipline/rewards" element={<RewardsPage />} />
-            <Route path="reward-discipline/disciplines" element={<DisciplinesPage />} />
-            <Route path="reward-discipline/rules" element={<RulesPage />} />
-            <Route path="reward-discipline/statistics" element={<StatisticsPage />} />
-            
+             <Route path="chat-NV/chatNV" element={<Chat/>}/>
             {/* Salary & Benefits */}
-            <Route path="salary-benefits/PayrollBenefits" element={<PayrollBenefits />} />
+            
             
             {/* Users & Permissions */}
             <Route path="users-permissions/UserManagement" element={<UserManagement />} />
           </Route>
         </Routes>
       </Router>
+      </ThemeProvider>
     </UniversityProvider>
   );
 }
-//jhjhj
+
 
 export default App;

@@ -44,10 +44,13 @@ const userSchema = new mongoose.Schema({
     ref: 'Department'
   },
 
-  position: {
-    type: String,
-    default: 'Nhân viên'
-  },
+ position: {
+  type: String,
+  enum: ['Nhân viên', 'Admin', 'Quản lý'],
+  default: 'Nhân viên',
+  required: true,
+  trim: true
+},
 
   hourlyRate: {
     type: Number,
@@ -79,6 +82,8 @@ userSchema.pre('save', async function () {
   // Update timestamp
   this.updatedAt = Date.now();
 });
+
+
 
 // Method để so sánh password
 userSchema.methods.comparePassword = async function(candidatePassword) {

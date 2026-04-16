@@ -12,9 +12,11 @@ import {
   FaClock
 } from 'react-icons/fa';
 import { FiLogOut } from 'react-icons/fi';
+import { useTheme } from './ThemeContext';
 import './header.css';
 
 const Header = ({ pageTitle = "Trang chủ" }) => {
+   const { settings, updateSettings } = useTheme(); // Sử dụng theme context
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([]);
@@ -187,13 +189,7 @@ const userInfo = getUserInfo();
   };
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    // Apply dark mode to body
-    if (!darkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
+    updateSettings({ ...settings, darkMode: !settings.darkMode });
   };
 
   const markAllAsRead = () => {
@@ -205,8 +201,14 @@ const userInfo = getUserInfo();
     setUnreadNotifications(0);
   };
 
+    // Style inline để áp dụng màu sắc từ settings
+  const headerStyle = {
+    backgroundColor: settings.headerColor,
+    color: settings.darkMode ? '#f3f4f6' : '#1f2937',
+  };
+
   return (
-    <header className="header">
+    <header className="header-dashboard" style={headerStyle}>
       <div className="header-left">
         <div className="page-title">
           <h1>{pageTitle}</h1>
@@ -223,43 +225,36 @@ const userInfo = getUserInfo();
         </div>
       </div>
 
-      <div className="header-right">
+      <div className="header-right-phuc">
         {/* Search Bar */}
-        <div className="search-container">
-          <form onSubmit={handleSearch} className="search-form">
+        <div className="search-container-header">
+          <form onSubmit={handleSearch} className="search-form-header">
             <input
               type="text"
               placeholder="Tìm kiếm nhân viên, hợp đồng, báo cáo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
+              className="search-input-header"
             />
-            <button type="submit" className="search-button">
+            <button type="submit" className="search-button-header">
               <FaSearch />
             </button>
           </form>
         </div>
 
         {/* Dark Mode Toggle */}
-        <button className="icon-button theme-toggle" onClick={toggleDarkMode} title="Chế độ tối">
-          {darkMode ? <FaSun /> : <FaMoon />}
+      <button className="icon-button-header theme-toggle" onClick={toggleDarkMode} title="Chế độ tối">
+          {settings.darkMode ? <FaSun /> : <FaMoon />}
         </button>
 
-        {/* Help Button */}
-        <button className="icon-button help-button" title="Trợ giúp">
-          <FaQuestionCircle />
-        </button>
+       
 
-        {/* Messages */}
-        <div className="icon-button messages-button" title="Tin nhắn">
-          <FaEnvelope />
-          <span className="badge">2</span>
-        </div>
+     
 
         {/* Notifications */}
         <div className="notifications-container">
           <button 
-            className="icon-button notifications-button"
+            className="icon-button-header notifications-button"
             onClick={() => setShowNotifications(!showNotifications)}
             title="Thông báo"
           >

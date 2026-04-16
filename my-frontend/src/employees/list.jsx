@@ -103,24 +103,7 @@ const TeacherList = () => {
   };
 
   // ✅ Xử lý xóa giảng viên
-  const handleDelete = (teacher) => {
-    setSelectedTeacher(teacher);
-    setIsDeleteModalOpen(true);
-  };
 
-  const confirmDelete = async () => {
-    if (!selectedTeacher) return;
-
-    try {
-      await deleteTeacher(selectedTeacher._id);
-      setIsDeleteModalOpen(false);
-      setSelectedTeacher(null);
-      alert(`Đã xóa giảng viên "${selectedTeacher.name}" thành công!`);
-    } catch (error) {
-      console.error('Lỗi khi xóa giảng viên:', error);
-      alert(error.response?.data?.message || 'Lỗi khi xóa giảng viên!');
-    }
-  };
 
   // Thêm giảng viên mới
   const handleAddTeacher = () => {
@@ -937,13 +920,7 @@ const TeacherList = () => {
                 >
                   {teacher.isLocked ? '🔓 Mở khóa' : '🔒 Khóa'}
                 </button>
-                <button
-                  className="btn-delete"  // ✅ Thêm nút xóa
-                  onClick={() => handleDelete(teacher)}
-                  disabled={teacher.isLocked}
-                >
-                  🗑️ Xóa
-                </button>
+              
               </div>
             </div>
           ))

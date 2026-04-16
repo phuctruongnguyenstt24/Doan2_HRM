@@ -1,7 +1,7 @@
 /* Header Container */
  
 
-.header {
+.header-dashboard {
   position: sticky;
   top: 0;
   left: 0;
@@ -18,7 +18,7 @@
 }
 
 /* Dark Mode */
-body.dark-mode .header {
+body.dark-mode .header-dashboard {
   background: #1a1d29;
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
 }
@@ -74,23 +74,23 @@ body.dark-mode .time {
 }
 
 /* Right Section */
-.header-right {
+.header-right-phuc {
   display: flex;
   align-items: center;
   gap: 20px;
 }
 
 /* Search Bar */
-.search-container {
+.search-container-header {
   position: relative;
 }
 
-.search-form {
+.search-form-header {
   display: flex;
   align-items: center;
 }
 
-.search-input {
+.search-input-header {
   width: 300px;
   padding: 10px 20px;
   padding-right: 50px;
@@ -102,31 +102,31 @@ body.dark-mode .time {
   color: #333;
 }
 
-body.dark-mode .search-input {
+body.dark-mode .search-input-header {
   background: #2d3748;
   border-color: #4a5568;
   color: #e2e8f0;
 }
 
-.search-input:focus {
+.search-input-header:focus {
   outline: none;
   border-color: #4dabf7;
   box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
   background: white;
 }
 
-body.dark-mode .search-input:focus {
+body.dark-mode .search-input-header:focus {
   background: #374151;
   border-color: #63b3ed;
 }
 
-.search-button {
+ .search-button-header {
   position: absolute;
-  right: 5px;
+  right: 8px; /* tăng chút cho đỡ sát */
   top: 50%;
   transform: translateY(-50%);
   background: #4dabf7;
-  color: white;
+  color: #fff;
   border: none;
   width: 36px;
   height: 36px;
@@ -135,16 +135,30 @@ body.dark-mode .search-input:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+
+  /* tối ưu animation */
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.search-button:hover {
+/* Hover */
+.search-button-header:hover {
   background: #339af0;
-  transform: translateY(-50%) scale(1.05);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
+/* Click (rất quan trọng để cảm giác "bấm") */
+.search-button-header:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* Focus (accessibility) */
+.search-button-header:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.4);
+}
 /* Icon Buttons */
-.icon-button {
+.icon-button-header {
   position: relative;
   background: #f8f9fa;
   border: none;
