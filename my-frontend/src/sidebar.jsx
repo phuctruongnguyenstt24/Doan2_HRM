@@ -1,7 +1,6 @@
-// sidebar.jsx - Phiên bản đã cập nhật
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useTheme } from './ThemeContext'; // Thêm import useTheme
+import { useTheme } from './ThemeContext';
 import {
   FaTachometerAlt,
   FaUsers,
@@ -9,163 +8,146 @@ import {
   FaFileContract,
   FaCalendarCheck,
   FaGraduationCap,
-  FaAward,
-  FaMoneyBillWave,
-  FaChartBar,
-  FaUserCog,
+  FaComment,
+  FaUserShield,
   FaCog,
-  FaBell,
   FaUserCircle,
   FaSignOutAlt,
   FaChevronLeft,
   FaChevronRight,
-  FaBars,
-  FaUserShield,
-  FaDatabase,
-  FaCogs,
-  FaHome,
-  FaComment
+  FaHome
 } from 'react-icons/fa';
 import './sidebar.css';
 
-const Sidebar = ({ collapsed, onToggle, onClose }) => {
-  const { settings } = useTheme(); // Lấy settings từ theme context
+const Sidebar = ({ collapsed, onToggle, onClose, onPageChange }) => {
+  const { settings } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(collapsed || false);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const navigate = useNavigate();
 
-  const toggleSubmenu = (menuName) => {
-    if (activeSubmenu === menuName) {
-      setActiveSubmenu(null);
-    } else {
-      setActiveSubmenu(menuName);
-    }
-  };
+  // Responsive handling
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setIsCollapsed(true);
+        if (onToggle) onToggle(true);
+      }
+    };
 
-  // Đồng bộ state khi prop collapsed thay đổi
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [onToggle]);
+
+  // Sync collapsed state
   useEffect(() => {
     if (collapsed !== undefined) {
       setIsCollapsed(collapsed);
     }
   }, [collapsed]);
 
+  const toggleSubmenu = (menuName) => {
+    setActiveSubmenu(activeSubmenu === menuName ? null : menuName);
+  };
+
   const toggleSidebar = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-    if (onToggle) {
-      onToggle(newState);
-    }
+    if (onToggle) onToggle(newState);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     navigate('/login');
   };
 
-  // Style cho sidebar dựa trên settings
   const sidebarStyle = {
     backgroundColor: settings.sidebarColor,
     color: settings.darkMode ? '#f3f4f6' : '#ffffff',
   };
 
   const menuItems = [
-    {
-      name: 'Tổng quan',
-      icon: <FaTachometerAlt />,
-      path: '/dashboard',
-      submenu: null
-    },
+    { name: 'Tổng quan', icon: <FaTachometerAlt />, path: '/dashboard', title: 'Tổng quan', submenu: null },
     {
       name: 'Hồ sơ Nhân sự',
       icon: <FaUsers />,
+      title: 'Hồ sơ Nhân sự',
       path: '/employees',
       submenu: [
-        { name: 'Danh sách nhân viên', path: '/employees/list' }
+        { name: 'Danh sách nhân viên', path: '/employees/list', title: 'Danh sách giảng viên' }
       ]
     },
     {
       name: 'Cơ cấu Tổ chức',
       icon: <FaSitemap />,
+      title: 'Cơ cấu Tổ chức',
       path: '/organization',
       submenu: [
-        { name: 'Quản lí Khoa', path: '/organization/departments' },
-        { name: 'Quản lí Phòng ban', path: '/organization/OfficeManagement' }
+        { name: 'Quản lí Khoa', path: '/organization/departments', title: 'Quản lí Khoa' },
+        { name: 'Quản lí Phòng ban', path: '/organization/OfficeManagement', title: 'Quản lí Phòng ban' }
       ]
     },
     {
       name: 'Hợp đồng Lao động',
       icon: <FaFileContract />,
+      title: 'Hợp đồng Lao động',
       path: '/contracts',
       submenu: [
-        { name: 'Danh sách hợp đồng', path: '/contracts/listHD' },
-        { name: 'Tạo hợp đồng mới', path: '/contracts/createHD' },
+        { name: 'Danh sách hợp đồng', path: '/contracts/listHD', title: 'Danh sách hợp đồng' },
+        { name: 'Tạo hợp đồng mới', path: '/contracts/createHD', title: 'Tạo hợp đồng mới' }
       ]
     },
     {
       name: 'Chấm công & Công tác',
       icon: <FaCalendarCheck />,
+      title: 'Chấm công & Công tác',
       path: '/attendance',
       submenu: [
-        { name: 'Quản lí Chấm công', path: '/attendance/AttendanceManagement' },
-        { name: 'Báo cáo chấm công', path: '/attendance/AttendanceReport' },
-        { name: 'Quản lý công tác', path: '/attendance/BusinessTrip' }
+        { name: 'Quản lí Chấm công', path: '/attendance/AttendanceManagement', title: 'Quản lí Chấm công' },
+        { name: 'Báo cáo chấm công', path: '/attendance/AttendanceReport', title: 'Báo cáo chấm công' },
+        { name: 'Quản lý công tác', path: '/attendance/BusinessTrip', title: 'Quản lý công tác' }
       ]
     },
     {
       name: 'Đào tạo & Bồi dưỡng',
       icon: <FaGraduationCap />,
-      path: '/training/courses',
+      title: 'Đào tạo & Bồi dưỡng',
+      path: '/training',
+      submenu: [
+        { name: 'Quản lí đào tạo', path: '/training/courses', title: 'Quản lí đào tạo' },
+        { name: 'Lịch Giảng Viên', path: '/training/adminmanagerschedule', title: 'Lịch Giảng Viên' }
+      ]
     },
     {
       name: 'Nhắn tin',
       icon: <FaComment />,
       path: '/chat-NV/chatNV',
+      title: 'Nhắn tin',
+      submenu: null
     },
     {
       name: 'Người dùng & Phân quyền',
       icon: <FaUserShield />,
+      title: 'Người dùng & Phân quyền',
       path: '/users-permissions',
       submenu: [
-        { name: 'Quản lý người dùng', path: '/users-permissions/UserManagement' },
-        { name: 'Lịch sử truy cập', path: '/users-permissions/AccessLog' }
+        { name: 'Quản lý người dùng', path: '/users-permissions/UserManagement', title: 'Quản lý người dùng' }
       ]
-    },
+    }
   ];
 
   const getUserInfo = () => {
     try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user && user.avatar) {
-        return user;
+      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+      if (userStr) {
+        return JSON.parse(userStr);
       }
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      if (token) {
-        try {
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const decodedToken = JSON.parse(window.atob(base64));
-          if (decodedToken.avatar) {
-            localStorage.setItem('user', JSON.stringify(decodedToken));
-            return decodedToken;
-          }
-        } catch (e) {
-          console.error('Error decoding token:', e);
-        }
-      }
-      return {
-        name: 'Admin',
-        role: 'Quản trị viên',
-        avatar: null
-      };
+      return { name: 'Admin', role: 'Quản trị viên', avatar: null };
     } catch (error) {
-      console.error('Error getting user info:', error);
-      return {
-        name: 'Admin',
-        role: 'Quản trị viên',
-        avatar: null
-      };
+      return { name: 'Admin', role: 'Quản trị viên', avatar: null };
     }
   };
 
@@ -173,76 +155,62 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
 
   return (
     <>
-      <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} style={sidebarStyle}>
-        {/* Sidebar Header */}
-        <div className="sidebar-header">
+      <div className={`sidebar-admin ${isCollapsed ? 'collapsed-admin' : ''}`} style={sidebarStyle}>
+        <div className="sidebar-header-admin">
           {!isCollapsed && (
-            <div className="logo-section">
-              <div className="logo">
-                <FaHome />
-              </div>
-              <div className="logo-text" onClick={() => window.location.href="/"}>
+            <div className="logo-section-admin">
+              <div className="logo-admin"><FaHome /></div>
+              <div className="logo-text-admin" onClick={() => navigate('/')}>
                 <h2>HR System</h2>
                 <p>Quản lý University</p>
               </div>
             </div>
           )}
-          <button 
-            className="toggle-btn" 
-            onClick={toggleSidebar}
-            style={{ color: settings.darkMode ? '#f3f4f6' : '#fff' }}
-          >
+          <button className="toggle-btn-admin" onClick={toggleSidebar} style={{ color: '#fff' }}>
             {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
           </button>
         </div>
 
-        {/* User Profile Section */}
         {!isCollapsed && (
-          <div className="user-profile">
-            <div className="avatar">
-              {userInfo.avatar ? (
-                <img src={userInfo.avatar} alt={userInfo.name} />
-              ) : (
-                <FaUserCircle />
-              )}
+          <div className="user-profile-admin">
+            <div className="avatar-admin">
+              {userInfo.avatar ? <img src={userInfo.avatar} alt={userInfo.name} /> : <FaUserCircle />}
             </div>
-            <div className="user-info">
+            <div className="user-info-admin">
               <h4>{userInfo.name}</h4>
-              <p>{userInfo.role}</p>
+              <p>{userInfo.role === 'admin' ? 'Quản trị viên' : userInfo.role}</p>
             </div>
           </div>
         )}
-      
-        {/* Menu Items */}
-        <div className="sidebar-menu">
-          {menuItems.map((item, index) => (
-            <div key={index} className="menu-item-wrapper">
+
+        <div className="sidebar-menu-admin">
+          {menuItems.map((item) => (
+            <div key={item.name} className="menu-item-wrapper">
               {item.submenu ? (
                 <>
                   <div
-                    className={`menu-item ${activeSubmenu === item.name ? 'active' : ''}`}
+                    className={`menu-item-admin ${activeSubmenu === item.name ? 'active' : ''}`}
                     onClick={() => toggleSubmenu(item.name)}
                   >
-                    <span className="menu-icon">{item.icon}</span>
+                    <span className="menu-icon-admin">{item.icon}</span>
                     {!isCollapsed && (
                       <>
-                        <span className="menu-text-sidebar">{item.name}</span>
-                        <span className="arrow">
-                          {activeSubmenu === item.name ? '▾' : '▸'}
-                        </span>
+                        <span className="menu-text-admin">{item.name}</span>
+                        <span className="arrow">{activeSubmenu === item.name ? '▾' : '▸'}</span>
                       </>
                     )}
                   </div>
-                  {activeSubmenu === item.name && (
-                    <div className="submenu">
-                      {item.submenu.map((subItem, subIndex) => (
+                  {activeSubmenu === item.name && !isCollapsed && (
+                    <div className="submenu-admin">
+                      {item.submenu.map((subItem) => (
                         <NavLink
-                          key={subIndex}
+                          key={subItem.path}
                           to={subItem.path}
-                          className={({ isActive }) =>
-                            `submenu-item ${isActive ? 'active' : ''}`
-                          }
-                          onClick={onClose}
+                          className={({ isActive }) => `submenu-item-admin ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            if (onClose) onClose();
+                            if (onPageChange) onPageChange(subItem.title);
+                          }}
                         >
                           {subItem.name}
                         </NavLink>
@@ -253,53 +221,41 @@ const Sidebar = ({ collapsed, onToggle, onClose }) => {
               ) : (
                 <NavLink
                   to={item.path}
-                  className={({ isActive }) =>
-                    `menu-item ${isActive ? 'active' : ''}`
-                  }
-                  onClick={onClose}
+                  className={({ isActive }) => `menu-item-admin ${isActive ? 'active' : ''}`}
+                  onClick={() => {
+                    if (onClose) onClose();
+                    if (onPageChange) onPageChange(item.title);
+                  }}
                 >
-                  <span className="menu-icon">{item.icon}</span>
-                  {!isCollapsed && <span className="menu-text-sidebar">{item.name}</span>}
+                  <span className="menu-icon-admin">{item.icon}</span>
+                  {!isCollapsed && <span className="menu-text-admin">{item.name}</span>}
                 </NavLink>
               )}
             </div>
           ))}
         </div>
 
-        {/* Bottom Actions */}
-        <div className="sidebar-bottom">
-          <NavLink
-            to="/settings"
-            className={({ isActive }) => `bottom-menu-item ${isActive ? 'active' : ''}`}
-            onClick={onClose}
-          >
-            <FaCog className="bottom-icon" />
+        <div className="sidebar-bottom-admin">
+          <NavLink to="/settings" className={({ isActive }) => `bottom-menu-item-admin ${isActive ? 'active' : ''}`}>
+            <FaCog className="bottom-icon-admin" />
             {!isCollapsed && <span>Cài đặt</span>}
           </NavLink>
-          <button className="bottom-menu-item logout-btn" onClick={handleLogout}>
-            <FaSignOutAlt className="bottom-icon" />
+          <button className="bottom-menu-item-admin logout-btn-admin" onClick={handleLogout}>
+            <FaSignOutAlt className="bottom-icon-admin" />
             {!isCollapsed && <span>Đăng xuất</span>}
           </button>
         </div>
 
-        {/* Collapsed Info */}
         {isCollapsed && (
-          <div className="collapsed-user-info">
-            <div className="collapsed-avatar">
-              {userInfo.avatar ? (
-                <img src={userInfo.avatar} alt={userInfo.name} />
-              ) : (
-                <FaUserCircle />
-              )}
+          <div className="collapsed-user-info-admin">
+            <div className="collapsed-avatar-admin">
+              {userInfo.avatar ? <img src={userInfo.avatar} alt={userInfo.name} /> : <FaUserCircle />}
             </div>
           </div>
         )}
       </div>
 
-      {/* Mobile Toggle Button */}
-      <button className="mobile-toggle-btn" onClick={toggleSidebar}>
-        <FaBars />
-      </button>
+      <button className="mobile-toggle-btn-admin" onClick={toggleSidebar}>☰</button>
     </>
   );
 };

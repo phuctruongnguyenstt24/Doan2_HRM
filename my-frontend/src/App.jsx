@@ -1,12 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { UniversityProvider } from './contexts/UniversityContext'; // Import Provider
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { UniversityProvider } from './contexts/UniversityContext';
 import { ThemeProvider } from './ThemeContext';
 //admin
 import Login from './login';
+import ProtectedRoute from "./ProtectedRoute";
 import ForgotPassword from './ForgotPassword';
- 
- 
 import Register from './register';
 import Layout from './layout';
 import ChangePassword from './change-password';
@@ -18,121 +17,157 @@ import Organization from './organization/departments';
 import OfficeManagement from './organization/OfficeManagement';
 import Contracts from './contracts/listHD';
 import CreateHD from './contracts/createHD';
- 
 import Attendance from './attendance/AttendanceManagement';
 import AttendanceReport from './attendance/AttendanceReport';
 
-//Dành cho giảng viên , nhân viên
-import Sidebarteacher from './sidebar-teacher/EmployeeSidebar';
+//Dành cho nhân viên
+import Sidebaremployee from './sidebar-employee/EmployeeSidebar';
 import EmployeeAttendance from './NV-attendance/EmployeeAttendance';
 import NVDashboard from './NV/NVDashboard';
-import NVTraining from './NV/NVTraining';
+ 
 import NVchat from './NV-chat/ChatEmployee';
-// import TeacherTraining from './Teachers/TeacherTraining';
-// import EmployeeLeaveRequest from './NV-leave/LeaveRequest'; // Thêm nếu có
-// import EmployeeSalary from './NV-salary/Salary'; // Thêm nếu có
-// import EmployeeDocuments from './NV-documents/Documents'; // Thêm nếu có
-// import EmployeeCalendar from './NV-calendar/Calendar'; // Thêm nếu có
-// import EmployeeNotifications from './NV-notifications/Notifications'; // Thêm nếu có
-// import EmployeeProfile from './NV-profile/Profile'; // Thêm nếu có
+
+//Dành cho giảng viên
+import TeacherLogin from './Teacher/TeacherLogin';
+import TeacherDashboard from './Teacher/TeacherDashboard';
+import TeacherSidebar from './Teacher/TeacherSidebar'; // Thêm sidebar cho teacher
+import TeacherSchedule from './Teacher/TeacherSchedule';
+import FaceAttendance from './Teacher/FaceAttendance';
+
 
 //Admin
 import BusinessTrip from './attendance/BusinessTrip';
- 
 import Tranining from './training/courses';
-
+import AdminScheduleManager from './training/AdminScheduleManager';
 import Chat from './chat-NV/chatNV';
-
-
 import UserManagement from './users-permissions/UserManagement';
 
 function App() {
+  // Kiểm tra token khi load app
+  const isAuthenticated = () => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return !!token;
+  };
+
+  // Lấy role của user
+  const getUserRole = () => {
+    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+    if (!userStr) return null;
+    try {
+      const user = JSON.parse(userStr);
+      return user.role;
+    } catch (error) {
+      return null;
+    }
+  };
+
   return (
-    <UniversityProvider> {/* Bọc toàn bộ Router trong Provider */}
-    <ThemeProvider> 
-      <Router>
-        <Routes>
-          {/* Public routes - không cần Layout */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword/>}/>
-       
-          <Route path="/register" element={<Register />} />
-          
-          {/* Employee routes - sử dụng EmployeeSidebar */}
-          <Route path="/employee" element={<Sidebarteacher />}>
-            {/* Dashboard */}
-            <Route path="NVDashboard" element={<NVDashboard />} />
-            <Route path="NVtraining" element={<NVTraining/>}/>
-            {/* Attendance */}
-            <Route path="NVattendance" element={<EmployeeAttendance />} />
+    <UniversityProvider>
+      <ThemeProvider>
+        <Router>
+          <Routes>
+            {/* Public routes - không cần đăng nhập */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/teacher-login" element={<TeacherLogin />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/register" element={<Register />} />
 
-            <Route path="Chatemployee" element={<NVchat/>}/>
+            {/* Redirect root based on authentication */}
+            <Route
+              path="/"
+              element={
+                isAuthenticated() ? (
+                  <Navigate to={
+                    getUserRole() === 'admin' ? '/dashboard' :
+                    getUserRole() === 'employee' ? '/employee/NVDashboard' :
+                    getUserRole() === 'teacher' ? '/teacher/dashboard' : '/login'
+                  } replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
+            {/* Employee routes - thêm requiredRole="employee" */}
+            <Route
+              path="/employee"
+              element={
+                <ProtectedRoute requiredRole="employee">
+                  <Sidebaremployee />
+                </ProtectedRoute>
+              }
+            >
+              {/* Sửa path đúng với login.jsx */}
+              <Route path="dashboard" element={<NVDashboard />} />
+              <Route path="NVDashboard" element={<NVDashboard />} /> {/* Giữ lại cho tương thích */}
+        
+              <Route path="NVattendance" element={<EmployeeAttendance />} />
+              <Route path="Chatemployee" element={<NVchat />} />
+            </Route>
 
-            
-            {/* Training */}
-            {/* <Route path="training" element={<TeacherTraining />} />
-             */}
-            {/* Leave Request */}
-            {/* <Route path="leave-request" element={<EmployeeLeaveRequest />} />
-             */}
-            {/* Salary */}
-            {/* <Route path="salary" element={<EmployeeSalary />} />
-             */}
-            {/* Documents */}
-            {/* <Route path="documents" element={<EmployeeDocuments />} /> */}
-            
-            {/* Calendar */}
-            {/* <Route path="calendar" element={<EmployeeCalendar />} /> */}
-            
-            {/* Notifications */}
-            {/* <Route path="notifications" element={<EmployeeNotifications />} /> */}
-            
-            {/* Profile */}
-            {/* <Route path="profile" element={<EmployeeProfile />} /> */}
-          </Route>
+            {/* Teacher routes - THÊM VÀO */}
+            <Route
+              path="/teacher"
+              element={
+                <ProtectedRoute requiredRole="teacher">
+                  <TeacherSidebar />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<TeacherDashboard />} />
+              <Route path="teacherschedule" element={<TeacherSchedule/>}/>
+              <Route path="face-attendance" element={<FaceAttendance />} />
+              
+            </Route>
 
-          {/* Protected routes - có Layout dành cho Admin */}
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile/>}/>
-                 <Route path="/settings" element={<Settings/>}/>
-          <Route path="/change-password" element={<ChangePassword />} />
-            
-            {/* Employees */}
-            <Route path="employees/list" element={<Employees />} />
-            
-            {/* Organization */}
-            <Route path="organization/departments" element={<Organization />} />
-            <Route path="organization/OfficeManagement" element={<OfficeManagement />} />
-            
-            {/* Contracts */}
-            <Route path="contracts/listHD" element={<Contracts />} />
-            <Route path="contracts/createHD" element={<CreateHD />} />
-            
-            {/* Attendance */}
-            <Route path="attendance/AttendanceManagement" element={<Attendance />} />
-            <Route path="attendance/AttendanceReport" element={<AttendanceReport />} />
-            <Route path="attendance/BusinessTrip" element={<BusinessTrip />} />
-            
-            {/* Training */}
-            <Route path="training/courses" element={<Tranining />} />
-            
-            {/* Reward & Discipline */}
-             <Route path="chat-NV/chatNV" element={<Chat/>}/>
-            {/* Salary & Benefits */}
-            
-            
-            {/* Users & Permissions */}
-            <Route path="users-permissions/UserManagement" element={<UserManagement />} />
-          </Route>
-        </Routes>
-      </Router>
+            {/* Admin routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="change-password" element={<ChangePassword />} />
+              <Route path="employees/list" element={<Employees />} />
+              <Route path="organization/departments" element={<Organization />} />
+              <Route path="organization/OfficeManagement" element={<OfficeManagement />} />
+              <Route path="contracts/listHD" element={<Contracts />} />
+              <Route path="contracts/createHD" element={<CreateHD />} />
+              <Route path="attendance/AttendanceManagement" element={<Attendance />} />
+              <Route path="attendance/AttendanceReport" element={<AttendanceReport />} />
+              <Route path="attendance/BusinessTrip" element={<BusinessTrip />} />
+              <Route path="training/courses" element={<Tranining />} />
+              <Route path="training/adminmanagerschedule" element={<AdminScheduleManager/>}/>
+              <Route path="chat-NV/chatNV" element={<Chat />} />
+              <Route path="users-permissions/UserManagement" element={<UserManagement />} />
+            </Route>
+
+            {/* Catch all - redirect based on authentication */}
+            <Route 
+              path="*" 
+              element={
+                isAuthenticated() ? (
+                  <Navigate to={
+                    getUserRole() === 'admin' ? '/dashboard' :
+                    getUserRole() === 'employee' ? '/employee/NVDashboard' :
+                    getUserRole() === 'teacher' ? '/teacher/dashboard' : '/login'
+                  } replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              } 
+            />
+          </Routes>
+        </Router>
       </ThemeProvider>
     </UniversityProvider>
   );
 }
-
 
 export default App;

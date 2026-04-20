@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const TrainingProgram = require('../models/TrainingProgram');
 const Enrollment = require('../models/Enrollment');
+const LecturerSchedule = require('../models/LecturerSchedule');
 const Teacher = require('../models/Teacher');
 
 // ==================== QUẢN LÝ CHƯƠNG TRÌNH ====================
@@ -380,17 +381,432 @@ router.get('/statistics/faculty', async (req, res) => {
 });
 
 //Dành cho giảng viên
-
 // ==================== API CHO GIẢNG VIÊN ====================
-// routes/trainingRoutes.js (thêm vào cuối file, trước module.exports)
-
-// routes/trainingRoutes.js (phần API cho giảng viên)
-
-// ==================== API CHO GIẢNG VIÊN ====================
-
-// Helper: Lấy teacher từ teacherCode
+ 
+// ==================== QUẢN LÝ LỊCH GIẢNG VIÊN ====================
 
 
+// Lấy danh sách lịch của giảng viên
+router.get('/lecturer-schedules', async (req, res) => {
+  try {
+    const { lecturerId, programId, month, year, startDate, endDate, status } = req.query;
+    let filter = {};
+
+    if (lecturerId) filter.lecturerId = lecturerId;
+    if (programId) filter.programId = programId;
+    if (status) filter.status = status;
+
+    // Lọc theo tháng/năm
+    if (month && year) {
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+      filter.date = { $gte: start, $lte: end };
+    }
+
+    // Lọc theo khoảng ngày
+    if (startDate && endDate) {
+      filter.date = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const schedules = await LecturerSchedule.find(filter)
+      .populate('lecturerId', 'name teacherCode email phone faculty')
+      .populate('programId', 'code name type category duration credits')
+      .sort({ date: 1, startTime: 1 });
+
+    res.json({
+      success: true,
+      data: schedules
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Lấy chi tiết một lịch
+router.get('/lecturer-schedules/:id', async (req, res) => {
+  try {
+    const schedule = await LecturerSchedule.findById(req.params.id)
+      .populate('lecturerId', 'name teacherCode email phone faculty')
+      .populate('programId', 'code name type category duration credits');
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch' });
+    }
+
+    res.json({
+      success: true,
+      data: schedule
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Tạo lịch mới
+router.post('/lecturer-schedules', async (req, res) => {
+  try {
+    const {
+      programId,
+      lecturerId,
+      title,
+      date,
+      startTime,
+      endTime,
+      location,
+      room,
+      sessionType,
+      maxStudents,
+      currentStudents,
+      description,
+      requirements,
+      materials,
+      status
+    } = req.body;
+
+    // Kiểm tra giảng viên tồn tại
+    const teacher = await Teacher.findById(lecturerId);
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy giảng viên' });
+    }
+
+    // Kiểm tra chương trình tồn tại (nếu có)
+    let program = null;
+    let courseCode = null;
+    let courseName = null;
+
+    if (programId) {
+      program = await TrainingProgram.findById(programId);
+      if (program) {
+        courseCode = program.code;
+        courseName = program.name;
+      }
+    }
+
+    // Kiểm tra trùng lịch
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(`${date}T${endTime}`);
+
+    const conflictingSchedule = await LecturerSchedule.findOne({
+      lecturerId,
+      date,
+      $or: [
+        {
+          startTime: { $lt: endTime },
+          endTime: { $gt: startTime }
+        }
+      ],
+      status: { $ne: 'Cancelled' }
+    });
+
+    if (conflictingSchedule) {
+      return res.status(400).json({
+        success: false,
+        message: 'Giảng viên đã có lịch vào khung giờ này'
+      });
+    }
+
+    const schedule = new LecturerSchedule({
+      programId: programId || null,
+      lecturerId,
+      courseCode,
+      courseName,
+      title,
+      date: new Date(date),
+      startTime,
+      endTime,
+      location,
+      room,
+      sessionType: sessionType || 'Lý thuyết',
+      maxStudents: maxStudents || 30,
+      currentStudents: currentStudents || 0,
+      description: description || '',
+      requirements: requirements || '',
+      materials: materials || '',
+      status: status || 'Scheduled'
+    });
+
+    const savedSchedule = await schedule.save();
+
+    // Populate dữ liệu trước khi trả về
+    await savedSchedule.populate('lecturerId', 'name teacherCode email phone faculty');
+    await savedSchedule.populate('programId', 'code name type category');
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo lịch thành công',
+      data: savedSchedule
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Cập nhật lịch
+router.put('/lecturer-schedules/:id', async (req, res) => {
+  try {
+    const schedule = await LecturerSchedule.findById(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch' });
+    }
+
+    const {
+      title,
+      date,
+      startTime,
+      endTime,
+      location,
+      room,
+      sessionType,
+      maxStudents,
+      currentStudents,
+      description,
+      requirements,
+      materials,
+      status
+    } = req.body;
+
+    // Kiểm tra trùng lịch (trừ chính nó)
+    if (date && startTime && endTime) {
+      const conflictingSchedule = await LecturerSchedule.findOne({
+        _id: { $ne: req.params.id },
+        lecturerId: schedule.lecturerId,
+        date: new Date(date),
+        $or: [
+          {
+            startTime: { $lt: endTime },
+            endTime: { $gt: startTime }
+          }
+        ],
+        status: { $ne: 'Cancelled' }
+      });
+
+      if (conflictingSchedule) {
+        return res.status(400).json({
+          success: false,
+          message: 'Giảng viên đã có lịch vào khung giờ này'
+        });
+      }
+    }
+
+    // Cập nhật các trường
+    if (title) schedule.title = title;
+    if (date) schedule.date = new Date(date);
+    if (startTime) schedule.startTime = startTime;
+    if (endTime) schedule.endTime = endTime;
+    if (location) schedule.location = location;
+    if (room) schedule.room = room;
+    if (sessionType) schedule.sessionType = sessionType;
+    if (maxStudents) schedule.maxStudents = maxStudents;
+    if (currentStudents !== undefined) schedule.currentStudents = currentStudents;
+    if (description !== undefined) schedule.description = description;
+    if (requirements !== undefined) schedule.requirements = requirements;
+    if (materials !== undefined) schedule.materials = materials;
+    if (status) schedule.status = status;
+
+    schedule.updatedAt = Date.now();
+
+    const updatedSchedule = await schedule.save();
+    await updatedSchedule.populate('lecturerId', 'name teacherCode email phone faculty');
+    await updatedSchedule.populate('programId', 'code name type category');
+
+    res.json({
+      success: true,
+      message: 'Cập nhật lịch thành công',
+      data: updatedSchedule
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Xóa lịch
+router.delete('/lecturer-schedules/:id', async (req, res) => {
+  try {
+    const schedule = await LecturerSchedule.findById(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch' });
+    }
+
+    await schedule.deleteOne();
+
+    res.json({
+      success: true,
+      message: 'Xóa lịch thành công'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Gửi nhắc nhở cho giảng viên
+router.post('/lecturer-schedules/:id/remind', async (req, res) => {
+  try {
+    const schedule = await LecturerSchedule.findById(req.params.id)
+      .populate('lecturerId', 'name email phone');
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch' });
+    }
+
+    // Cập nhật trạng thái đã gửi nhắc
+    schedule.reminderSent = true;
+    schedule.reminderSentAt = new Date();
+    await schedule.save();
+
+    // TODO: Gửi email/SMS thực tế ở đây
+    // Ví dụ: sendEmail(schedule.lecturerId.email, 'Nhắc nhở lịch dạy', generateReminderContent(schedule));
+
+    res.json({
+      success: true,
+      message: `Đã gửi nhắc nhở đến giảng viên ${schedule.lecturerId.name}`,
+      data: {
+        sentTo: schedule.lecturerId.email,
+        schedule: {
+          title: schedule.title,
+          date: schedule.date,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          location: schedule.location,
+          room: schedule.room
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Lấy lịch theo tuần
+router.get('/lecturer-schedules/week/:lecturerId', async (req, res) => {
+  try {
+    const { lecturerId } = req.params;
+    const { weekOffset = 0 } = req.query;
+
+    // Tính ngày đầu tuần (Thứ 2)
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysToMonday + (weekOffset * 7));
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const schedules = await LecturerSchedule.find({
+      lecturerId,
+      date: { $gte: monday, $lte: sunday },
+      status: { $ne: 'Cancelled' }
+    })
+      .populate('programId', 'code name')
+      .sort({ date: 1, startTime: 1 });
+
+    // Nhóm theo ngày
+    const schedulesByDay = {};
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      const dateStr = day.toISOString().split('T')[0];
+      schedulesByDay[dateStr] = [];
+    }
+
+    schedules.forEach(schedule => {
+      const dateStr = schedule.date.toISOString().split('T')[0];
+      if (schedulesByDay[dateStr]) {
+        schedulesByDay[dateStr].push(schedule);
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        weekStart: monday,
+        weekEnd: sunday,
+        schedules: schedulesByDay
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Cập nhật trạng thái điểm danh cho buổi học
+router.put('/lecturer-schedules/:id/attendance', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { attendanceList } = req.body; // [{ teacherId, status, note }]
+
+    const schedule = await LecturerSchedule.findById(id);
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch' });
+    }
+
+    // Cập nhật danh sách điểm danh
+    schedule.attendance = attendanceList;
+    schedule.currentStudents = attendanceList.filter(a => a.status === 'present').length;
+    schedule.updatedAt = Date.now();
+
+    await schedule.save();
+
+    res.json({
+      success: true,
+      message: 'Cập nhật điểm danh thành công',
+      data: {
+        present: schedule.currentStudents,
+        total: schedule.maxStudents,
+        attendanceRate: (schedule.currentStudents / schedule.maxStudents * 100).toFixed(1)
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Lấy thống kê lịch dạy của giảng viên
+router.get('/lecturer-schedules/statistics/:lecturerId', async (req, res) => {
+  try {
+    const { lecturerId } = req.params;
+    const { year, month } = req.query;
+
+    let matchCondition = { lecturerId };
+    
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      matchCondition.date = { $gte: startDate, $lte: endDate };
+    }
+
+    const stats = await LecturerSchedule.aggregate([
+      { $match: matchCondition },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalHours: { $sum: { $divide: [{ $subtract: ['$endTime', '$startTime'] }, 3600000] } }
+        }
+      }
+    ]);
+
+    const totalSessions = stats.reduce((sum, s) => sum + s.count, 0);
+    const totalHours = stats.reduce((sum, s) => sum + s.totalHours, 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalSessions,
+        totalHours,
+        breakdown: stats,
+        averageHoursPerSession: totalSessions > 0 ? (totalHours / totalSessions).toFixed(1) : 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 
 module.exports = router;

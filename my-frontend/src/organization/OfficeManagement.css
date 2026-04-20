@@ -1,21 +1,21 @@
 /* OfficeManagement.css */
 .office-management-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: var() linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Header */
 .office-header {
-  background: white;
+  background:  white;
   border-radius: 16px;
   padding: 25px 30px;
   margin-bottom: 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:  0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border-left: 6px solid #3B82F6;
 }
 
@@ -156,7 +156,7 @@
 }
 
 .stat-card {
-  background: white;
+  background:  white;
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -211,7 +211,7 @@
 
 /* Search and Filter */
 .search-filter-container-OF {
-  background: white;
+  background:  white;
   border-radius: 16px;
   padding: 25px;
   margin-bottom: 25px;
@@ -239,14 +239,14 @@
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: #f8fafc;
+  background: var()  #f8fafc;
 }
 
 .search-input-OF:focus {
   outline: none;
-  border-color: #3B82F6;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var() #3B82F6;
+  background: var() white;
+  box-shadow: var() 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon-OF {
@@ -254,7 +254,7 @@
   left: 20px;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var() #94a3b8;
   font-size: 1.1rem;
 }
 
@@ -294,7 +294,7 @@
   border: 2px solid #e2e8f0;
   border-radius: 12px;
   font-size: 0.95rem;
-  background: white;
+  background: var() white;
   cursor: pointer;
   min-width: 180px;
   transition: all 0.3s ease;
@@ -306,7 +306,7 @@
 }
 
 .sort-order-btn-OF {
-  background: #f1f5f9;
+  background: var() #f1f5f9;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
   width: 48px;
@@ -1149,13 +1149,13 @@
   font-family: 'Courier New', monospace;
 }
 
-.color-picker {
+.color-picker-OFF {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.color-option {
+.color-option-OFF {
   width: 35px;
   height: 35px;
   border-radius: 8px;
@@ -1165,11 +1165,11 @@
   position: relative;
 }
 
-.color-option:hover {
+.color-option-OFF:hover {
   transform: scale(1.1);
 }
 
-.color-option.selected {
+.color-option-OFF.selected {
   transform: scale(1.15);
   box-shadow: 0 0 0 3px white, 0 0 0 5px #3B82F6;
 }

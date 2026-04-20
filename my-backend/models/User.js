@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin', 'manager'],
-    default: 'user'
+    enum: ['employee', 'admin', 'teacher'],
+    default: 'employee'
   },
 
   // THÊM CÁC FIELD HRM

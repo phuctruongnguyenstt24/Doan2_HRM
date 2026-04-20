@@ -239,7 +239,7 @@ const handleSubmit = async (e) => {
           {/* Cột trái */}
           <div className="form-column">
             <div className="form-group">
-              <label className="form-label">
+              <label className="form-label-cr">
                 Mã hợp đồng <span className="required">*</span>
                 <span className="label-hint">(Chỉ chứa chữ hoa, số, dấu gạch ngang)</span>
               </label>

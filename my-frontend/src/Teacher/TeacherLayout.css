@@ -1,0 +1,213 @@
+/* Teacher/TeacherLayout.css */
+.teacher-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+/* Sidebar Styles */
+.teacher-sidebar {
+  width: 280px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: fixed;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.teacher-sidebar.closed {
+  width: 80px;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.logo-icon {
+  font-size: 1.5rem;
+}
+
+.logo-text {
+  white-space: nowrap;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 5px;
+  border-radius: 5px;
+  transition: background 0.3s;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-user {
+  padding: 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.user-avatar img,
+.avatar-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.user-info-sidebar h4 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.user-info-sidebar p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.75rem 1.5rem;
+  color: white;
+  text-decoration: none;
+  transition: all 0.3s;
+  margin: 0.25rem 0;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-left: 3px solid white;
+}
+
+.nav-icon {
+  font-size: 1.2rem;
+  min-width: 24px;
+}
+
+.nav-label {
+  white-space: nowrap;
+}
+
+.sidebar-footer {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-btn-sidebar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.logout-btn-sidebar:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Main Content Styles */
+.teacher-main {
+  flex: 1;
+  margin-left: 280px;
+  transition: margin-left 0.3s ease;
+}
+
+.teacher-sidebar.closed + .teacher-main {
+  margin-left: 80px;
+}
+
+.teacher-header {
+  background: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.welcome-text {
+  color: #666;
+  font-weight: 500;
+}
+
+.teacher-content {
+  padding: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .teacher-sidebar {
+    width: 80px;
+  }
+  
+  .teacher-sidebar.open {
+    width: 280px;
+  }
+  
+  .teacher-main {
+    margin-left: 80px;
+  }
+  
+  .teacher-sidebar.open + .teacher-main {
+    margin-left: 280px;
+  }
+}

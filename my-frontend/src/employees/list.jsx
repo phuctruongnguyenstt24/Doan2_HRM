@@ -802,9 +802,10 @@ const TeacherList = () => {
         </div>
 
         <div className="filter-group-GV">
-          <div className="department-filter">
-            <label>Khoa:</label>
+          <div className="department-filter-GV">
+            <label className="filter-for-khoa">Khoa:</label>
             <select
+           
               value={filterFaculty}
               onChange={(e) => {
                 setFilterFaculty(e.target.value);
@@ -817,13 +818,12 @@ const TeacherList = () => {
             </select>
           </div>
 
-          <div className="department-filter">
+          <div className="department-filter-GV">
             <label>Chuyên ngành:</label>
             <select
               value={filterMajor}
               onChange={(e) => setFilterMajor(e.target.value)}
-            // ❌ Bỏ dòng disabled
-            // disabled={filterFaculty === 'Tất cả'}
+          
             >
               {majorList.map(major => (
                 <option key={major} value={major}>{major}</option>
@@ -854,17 +854,17 @@ const TeacherList = () => {
       </div>
 
       {/* Danh sách giảng viên */}
-      <div className="employee-grid">
+      <div className="employee-grid-GV">
         {filteredTeachers.length > 0 ? (
           filteredTeachers.map(teacher => (
-            <div key={teacher._id} className="employee-card">
-              <div className="employee-header">
+            <div key={teacher._id} className="employee-card-GV">
+              <div className="employee-header-GV">
                 <img
                   src={teacher.avatar || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`}
                   alt={teacher.name}
-                  className="employee-avatar"
+                  className="employee-avatar-GV"
                 />
-                <div className="employee-info">
+                <div className="employee-info-GV">
                   <h3>{teacher.name}</h3>
                   <span className='department-nv'>{teacher.faculty}</span>
                   <span className="student-id">MGV: {teacher.teacherCode}</span>

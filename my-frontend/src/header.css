@@ -1,7 +1,5 @@
 /* Header Container */
- 
-
-.header-dashboard {
+.header-dashboard-HE {
   position: sticky;
   top: 0;
   left: 0;
@@ -18,13 +16,14 @@
 }
 
 /* Dark Mode */
-body.dark-mode .header-dashboard {
-  background: #1a1d29;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+body.dark-mode .header-dashboard-HE {
+   background: linear-gradient(135deg, #0b0202 0%, #010101 100%);
+  box-shadow: 0 2px 20px rgba(197, 191, 191, 0.3);
+ 
 }
 
 /* Left Section */
-.header-left {
+.header-left-HE {
   display: flex;
   align-items: center;
 }
@@ -33,7 +32,7 @@ body.dark-mode .header-dashboard {
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
-  color: #1e3c72;
+  color: #d2d8e3;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -88,6 +87,7 @@ body.dark-mode .time {
 .search-form-header {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .search-input-header {
@@ -120,9 +120,9 @@ body.dark-mode .search-input-header:focus {
   border-color: #63b3ed;
 }
 
- .search-button-header {
+.search-button-header {
   position: absolute;
-  right: 8px; /* tăng chút cho đỡ sát */
+  right: 1px;
   top: 50%;
   transform: translateY(-50%);
   background: #4dabf7;
@@ -135,28 +135,24 @@ body.dark-mode .search-input-header:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-
-  /* tối ưu animation */
   transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Hover */
 .search-button-header:hover {
   background: #339af0;
   transform: translateY(-50%) scale(1.08);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* Click (rất quan trọng để cảm giác "bấm") */
 .search-button-header:active {
   transform: translateY(-50%) scale(0.95);
 }
 
-/* Focus (accessibility) */
 .search-button-header:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.4);
 }
+
 /* Icon Buttons */
 .icon-button-header {
   position: relative;
@@ -174,18 +170,18 @@ body.dark-mode .search-input-header:focus {
   transition: all 0.3s ease;
 }
 
-body.dark-mode .icon-button {
+body.dark-mode .icon-button-header {
   background: #2d3748;
   color: #cbd5e0;
 }
 
-.icon-button:hover {
+.icon-button-header:hover {
   background: #e9ecef;
   color: #1e3c72;
   transform: translateY(-2px);
 }
 
-body.dark-mode .icon-button:hover {
+body.dark-mode .icon-button-header:hover {
   background: #4a5568;
   color: #ffffff;
 }
@@ -205,6 +201,7 @@ body.dark-mode .icon-button:hover {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  animation: pulse 2s infinite;
 }
 
 /* Theme Toggle */
@@ -249,6 +246,18 @@ body.dark-mode .notifications-dropdown {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -345,6 +354,10 @@ body.dark-mode .notification-item:hover {
 
 body.dark-mode .notification-item.unread {
   background: #2a4365;
+}
+
+.notification-content {
+  flex: 1;
 }
 
 .notification-content h4 {
@@ -493,15 +506,15 @@ body.dark-mode .user-profile-button-admin:hover {
 .user-name-admin {
   font-weight: 600;
   color: #333;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
 }
 
-body.dark-mode .user-name {
+body.dark-mode .user-name-admin {
   color: #e2e8f0;
 }
 
 .user-role-admin {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #868e96;
   background: #f1f3f5;
   padding: 2px 8px;
@@ -509,7 +522,7 @@ body.dark-mode .user-name {
   margin-top: 2px;
 }
 
-body.dark-mode .user-role {
+body.dark-mode .user-role-admin {
   background: #4a5568;
   color: #a0aec0;
 }
@@ -525,7 +538,6 @@ body.dark-mode .user-role {
   top: 100%;
   right: -15px;
   width: 310px;
-   
   background: white;
   border-radius: 15px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -687,17 +699,17 @@ body.dark-mode .logout-item:hover {
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-  .search-input {
+  .search-input-header {
     width: 250px;
   }
 }
 
 @media (max-width: 992px) {
-  .header {
+  .header-dashboard-HE {
     padding: 0 20px;
   }
   
-  .search-input {
+  .search-input-header {
     width: 200px;
   }
   
@@ -707,46 +719,203 @@ body.dark-mode .logout-item:hover {
   }
 }
 
-@media (max-width: 768px) {
-  .header {
+ /* Mobile (dưới 768px) */
+ @media (max-width: 768px) {
+  /* Header Container */
+  .header-dashboard-HE {
     height: auto;
-    padding: 15px;
+    padding: 12px 16px;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
+    position: relative;
+    z-index: 101;
+    
   }
-  
-  .header-left, .header-right {
-    width: 100%;
+
+  /* Left Section - Tiêu đề (nằm bên trái) */
+  .header-left-HE {
+    order: 2;
+    flex: 1;
   }
-  
-  .header-right {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .search-container {
-    order: -1;
-    width: 100%;
-  }
-  
-  .search-input {
-    width: 100%;
-  }
-  
+
   .page-title h1 {
-    font-size: 1.5rem;
+    font-size: 20px;
+    margin-bottom: 0;
+    margin-left: -150px;
+   
   }
+
+  /* Ẩn date-time trên mobile để tiết kiệm không gian */
+  .date-time {
+    display: none;
+  }
+
+  /* Right Section - Chứa search, buttons, user profile */
+  .header-right-phuc {
+    order: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  /* Search Bar - Đưa xuống hàng riêng */
+  .search-container-header {
+    order: 3;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .search-form-header {
+    width: 100%;
+  }
+
+  .search-input-header {
+    width: 100%;
+    padding: 8px 40px 8px 15px;
+    font-size: 0.85rem;
+  }
+
+  .search-button-header {
+    width: 32px;
+    height: 32px;
+    right: 1px;
+  }
+
+  .search-button-header svg {
+    font-size: 0.9rem;
+  }
+
+  /* Icon Buttons (Dark mode, Notifications) */
+  .icon-button-header {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
+
+  /* Theme Toggle */
+  .theme-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
   
+
+  /* Notifications Container */
+  .notifications-container {
+    position: static;
+  }
+
+  /* User Profile Container */
+  .user-profile-container-admin {
+    position: static;
+  
+  }
+
+  /* User Profile Button - Thu gọn */
+  .user-profile-button-admin {
+    padding: 4px 8px;
+    gap: 0;
+    order: 2;
+    background: #f8f9fa;
+    border-radius: 30px;
+  }
+
+  body.dark-mode .user-profile-button-admin {
+    background: #2d3748;
+  }
+
+  .user-avatar, .avatar-placeholder {
+    width: 32px;
+    height: 32px;
+  }
+
+  .avatar-placeholder {
+    font-size: 0.9rem;
+  }
+
+  /* Ẩn text user info và dropdown arrow trên mobile */
+  .user-info-admin {
+    display: none;
+  }
+
+  .dropdown-arrow {
+    display: none;
+  }
+
+  /* Notifications Dropdown - Bottom sheet */
   .notifications-dropdown {
-    width: 300px;
-    right: -50px;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 80vh;
+    border-radius: 20px 20px 0 0;
+    margin-top: 0;
+    animation: slideUp 0.3s ease;
   }
-  
+
+  /* User Menu Dropdown - Bottom sheet */
   .user-menu-dropdown {
-    right: -50px;
+    position:fixed;
+    top: 5px;
+     
+    left: 0;
+    right: 0;
+     
+    border-radius: 20px 20px 0 0;
+    margin-top: 0;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Dropdown Overlay */
+  .dropdown-overlay {
+    background: rgba(0, 0, 0, 0.5);
   }
 }
 
+ /* Thêm vào header.css */
+.search-shortcut-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-secondary, #f3f4f6);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #6b7280;
+  margin-left: 12px;
+}
+
+.search-shortcut-hint kbd {
+  padding: 2px 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 10px;
+}
+ 
+
+
+
+
+
+/* PC */
 @media (max-width: 480px) {
   .notifications-dropdown {
     width: 280px;
@@ -758,32 +927,15 @@ body.dark-mode .logout-item:hover {
     right: -80px;
   }
   
-  .user-profile-button {
+  .user-profile-button-admin {
     padding: 5px 10px;
   }
   
-  .user-name {
+  .user-name-admin {
     font-size: 0.85rem;
   }
   
-  .user-role {
-    font-size: 0.75rem;
+  .user-role-admin {
+    font-size: 0.7rem;
   }
-}
-
-/* Animation for badge */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.badge {
-  animation: pulse 2s infinite;
 }

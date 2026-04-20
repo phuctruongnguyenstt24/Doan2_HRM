@@ -1,0 +1,156 @@
+/* FaceAttendance.css */
+.face-attendance {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.face-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.face-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.face-info {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.info-card {
+  flex: 1;
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.status-checked { background: #d4edda; color: #28a745; }
+.status-pending { background: #fff3cd; color: #f57c00; }
+
+.camera-placeholder {
+  background: #e9ecef;
+  border-radius: 16px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.placeholder-icon {
+  font-size: 64px;
+  color: #adb5bd;
+  margin-bottom: 20px;
+}
+
+.btn-start, .btn-capture, .btn-close {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-start { background: #2196f3; color: white; }
+.btn-capture { background: #28a745; color: white; }
+.btn-close { background: #6c757d; color: white; }
+
+.camera-container {
+  position: relative;
+  background: black;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.camera-video {
+  width: 100%;
+  height: auto;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  justify-content: center;
+}
+
+.face-message {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.face-message.success { background: #d4edda; color: #28a745; }
+.face-message.error { background: #f8d7da; color: #dc3545; }
+
+.face-result, .today-record {
+  margin-top: 20px;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.face-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.status-completed {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-badge.status-present {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-badge.status-late {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.status-badge.status-absent {
+    background-color: #dc3545;
+    color: white;
+}

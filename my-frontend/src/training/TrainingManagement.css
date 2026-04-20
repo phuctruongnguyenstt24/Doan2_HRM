@@ -1,7 +1,48 @@
 /* TrainingManagement.css */
+/* ===== LIGHT MODE (default) ===== */
+:root {
+  /* Background */
+  --bg-main: #f8f9fa;
+  --bg-card: #ffffff;
+  --bg-muted: #f1f3f5;
+
+  /* Text */
+  --text-primary: #1a2c3e;
+  --text-secondary: #6c757d;
+  --text-muted: #9ca3af;
+
+  /* Colors */
+  --primary-color: #4a90e2;
+  --success-color: #27ae60;
+  --danger-color: #e74c3c;
+  --warning-color: #f39c12;
+
+  /* UI */
+  --border-color: #e5e7eb;
+  --border-radius: 12px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== DARK MODE ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-main: #111827;
+    --bg-card: #1f2937;
+    --bg-muted: #374151;
+    --text-color:#f1f1f1 ;
+    --bg-color: #d61f1f ;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+
+    --border-color: #374151;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
 .training-management {
   padding: 24px;
-  background-color: #f5f7fa;
+  background-color: var() #f5f7fa;
   min-height: 100vh;
 }
 
@@ -13,12 +54,12 @@
 .training-header h1 {
   font-size: 28px;
   font-weight: 600;
-  color: #1a2c3e;
+  color: var() #1a2c3e;
   margin: 0 0 8px 0;
 }
 
 .training-header p {
-  color: #6c757d;
+  color: var() #6c757d;
   font-size: 14px;
   margin: 0;
 }
@@ -78,14 +119,14 @@
   min-width: 250px;
   display: flex;
   align-items: center;
-  background: white;
+  background: var() white;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   padding: 8px 12px;
 }
 
 .search-box svg {
-  color: #adb5bd;
+  color: var() #adb5bd;
   margin-right: 8px;
 }
 
@@ -100,7 +141,7 @@
   padding: 8px 12px;
   border: 1px solid #dee2e6;
   border-radius: 8px;
-  background: white;
+  background: var() white;
   font-size: 14px;
   cursor: pointer;
 }
@@ -168,16 +209,19 @@
 }
 
 .program-card {
-  background: white;
-  border-radius: 12px;
+  background: var() white;
+  border-radius: var(--border-radius);
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Hover */
 .program-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover, 0 6px 16px rgba(0, 0, 0, 0.12));
 }
 
 .program-header {
@@ -191,8 +235,10 @@
   font-family: monospace;
   font-size: 12px;
   font-weight: 600;
-  color: #6c757d;
-  background: #f8f9fa;
+
+  color: var(--text-color);
+  background: var(--bg-color);
+
   padding: 4px 8px;
   border-radius: 4px;
 }
@@ -235,7 +281,7 @@
 .program-name {
   font-size: 18px;
   font-weight: 600;
-  color: #1a2c3e;
+  color:  var(--text-color);
   margin: 0 0 12px 0;
 }
 
@@ -243,7 +289,7 @@
   display: flex;
   gap: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 12px;
 }
 
@@ -252,7 +298,7 @@
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--text-color);
 }
 
 .program-details {
@@ -267,7 +313,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #495057;
+  color: var(--text-color);
 }
 
 .program-dates {
@@ -275,9 +321,9 @@
   align-items: center;
   gap: 4px;
   padding: 8px 0;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--border-color);
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-color);
 }
 
 .program-actions {
@@ -286,7 +332,7 @@
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--border-color);
 }
 
 .icon-btn {

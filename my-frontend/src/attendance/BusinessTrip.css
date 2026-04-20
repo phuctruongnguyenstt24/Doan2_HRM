@@ -3,7 +3,7 @@
 /* Container */
 .business-trip-container {
   padding: 20px;
-  background: #f5f7fa;
+  background: var() #f5f7fa;
   min-height: 100vh;
 }
 
@@ -17,7 +17,7 @@
 
 .page-header h1 {
   font-size: 24px;
-  color: #333;
+  color: var() #333;
   margin: 0;
 }
 
@@ -160,7 +160,7 @@
 
 /* Table */
 .business-trip-table {
-  background: white;
+  background: var() white;
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -170,19 +170,21 @@ table {
   border-collapse: collapse;
 }
 
-th, td {
+th {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2px solid #f0f0f0;
 }
 
+ 
+
 th {
-  background: #fafafa;
+  background: var() #fafafa;
   font-weight: 600;
   color: #333;
 }
 
-tr:hover { background: #fafafa; }
+tr:hover { background: var() #fafafa; }
 
 .text-center { text-align: center; }
 

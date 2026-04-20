@@ -4,27 +4,22 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import './chatNV.css';
 
-// Tạo axios instance với base URL đúng
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  headers: { 'Content-Type': 'application/json' }
 });
 
-// Interceptor để thêm token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  config.headers['ngrok-skip-browser-warning'] = 'true';  // THÊM DÒNG NÀY
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  config.headers['ngrok-skip-browser-warning'] = 'true';
   return config;
 });
 
 const ChatNV = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
+  const [teachers, setTeachers] = useState([]); // THÊM: danh sách giảng viên
   const [conversations, setConversations] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -35,104 +30,71 @@ const ChatNV = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [userTyping, setUserTyping] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [totalMessages, setTotalMessages] = useState(0);
-  const [statsLoading, setStatsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('employees'); // THÊM: tab active
 
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Lấy current user từ localStorage
+  // Lấy current user
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setCurrentUser(JSON.parse(userStr));
-    }
-  }, []);
+    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+    if (userStr) setCurrentUser(JSON.parse(userStr));
+    else navigate('/login');
+  }, [navigate]);
 
-  // Kết nối Socket.IO
+  // Kết nối Socket
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    if (!currentUser) return;
 
-    if (!token && !user) {
-      navigate('/login');
-    }
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';  // DÙNG VITE_SOCKET_URL
-    console.log('Connecting to socket:', socketUrl);
-
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    
     socketRef.current = io(socketUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
-      withCredentials: true,
-      // THÊM HEADER ĐỂ BỎ QUA TRANG CẢNH BÁO CỦA NGrok
-      extraHeaders: {
-        'ngrok-skip-browser-warning': 'true'
-      }
+      extraHeaders: { 'ngrok-skip-browser-warning': 'true' }
     });
 
-    socketRef.current.on('connect', () => {
-      console.log('Connected to chat server');
-    });
-
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
+    socketRef.current.on('connect', () => console.log('Socket connected'));
+    socketRef.current.on('connect_error', (err) => console.error('Socket error:', err));
 
     socketRef.current.on('new_message', (message) => {
-      console.log('New message received:', message);
-      if (selectedUser && message.sender._id === selectedUser._id) {
+      if (!message?.sender) return;
+      
+      if (selectedUser?._id === message.sender._id) {
         setMessages(prev => [...prev, message]);
         scrollToBottom();
       }
-
-      updateConversations();
-
-      if (!selectedUser || message.sender._id !== selectedUser._id) {
-        setUnreadCounts(prev => ({
-          ...prev,
-          [message.sender._id]: (prev[message.sender._id] || 0) + 1
-        }));
-      }
+      fetchConversations();
+      fetchUnreadCounts();
     });
 
     socketRef.current.on('message_sent', (message) => {
-      console.log('Message sent:', message);
-      setMessages(prev => prev.filter(msg => !msg.isTemp));
+      setMessages(prev => prev.filter(m => !m.isTemp));
       setMessages(prev => [...prev, message]);
       scrollToBottom();
     });
 
     socketRef.current.on('user_typing', ({ userId, isTyping }) => {
-      if (selectedUser && userId === selectedUser._id) {
-        setUserTyping(isTyping);
-      }
+      if (selectedUser?._id === userId) setUserTyping(isTyping);
     });
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [navigate, selectedUser]);
+    return () => { socketRef.current?.disconnect(); };
+  }, [currentUser, selectedUser]);
 
-  // Load danh sách nhân viên và conversations
+  // Load dữ liệu ban đầu
   useEffect(() => {
     if (currentUser) {
       fetchEmployees();
+      fetchTeachers(); // THÊM: tải danh sách giảng viên
       fetchConversations();
-      fetchTotalMessages(); // THÊM DÒNG NÀY
-      fetchAllUnreadCounts(); // SỬA: đổi từ fetchUnreadCount
+      fetchUnreadCounts();
     }
-
-    const interval = setInterval(() => {
-      fetchAllUnreadCounts();
-    }, 30000);
-
+    const interval = setInterval(fetchUnreadCounts, 30000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
@@ -143,14 +105,10 @@ const ChatNV = () => {
       setPage(1);
       setHasMore(true);
       fetchMessages(1);
-
-      setUnreadCounts(prev => ({
-        ...prev,
-        [selectedUser._id]: 0
-      }));
-      // Gọi API để reset unread count trên server
-      resetUnreadCountForUser(selectedUser._id);
+      setUnreadCounts(prev => ({ ...prev, [selectedUser._id]: 0 }));
+      markAsRead(selectedUser._id);
     }
+    setUserTyping(null);
   }, [selectedUser]);
 
   useEffect(() => {
@@ -161,110 +119,83 @@ const ChatNV = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // THÊM: fetch danh sách giảng viên
+  const fetchTeachers = async () => {
+    try {
+      const res = await api.get('/messages/teachers');
+      setTeachers(res.data);
+    } catch (err) { 
+      console.error('Fetch teachers error:', err); 
+    }
+  };
+
   const fetchEmployees = async () => {
     try {
-      const response = await api.get('/messages/employees');
-      setEmployees(response.data);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
+      const res = await api.get('/messages/employees');
+      setEmployees(res.data);
+    } catch (err) { console.error('Fetch employees error:', err); }
   };
 
   const fetchConversations = async () => {
     try {
-      const response = await api.get('/messages/conversations');
-      setConversations(response.data);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
+      const res = await api.get('/messages/conversations');
+      setConversations(res.data);
+    } catch (err) { console.error('Fetch conversations error:', err); }
   };
 
   const fetchMessages = async (pageNum) => {
     if (!selectedUser) return;
-
     setLoading(true);
     try {
-      const response = await api.get(`/messages/messages/${selectedUser._id}`, {
+      const res = await api.get(`/messages/messages/${selectedUser._id}`, {
         params: { page: pageNum, limit: 50 }
       });
-
-      if (pageNum === 1) {
-        setMessages(response.data.messages);
-      } else {
-        setMessages(prev => [...response.data.messages, ...prev]);
-      }
-
-      setHasMore(response.data.messages.length === 50);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setLoading(false);
-    }
+      if (pageNum === 1) setMessages(res.data.messages);
+      else setMessages(prev => [...res.data.messages, ...prev]);
+      setHasMore(res.data.messages.length === 50);
+    } catch (err) { console.error('Fetch messages error:', err); }
+    finally { setLoading(false); }
   };
 
-  // CHATNV.JSX - Thay thế hàm fetchUnreadCount
-  const fetchAllUnreadCounts = async () => {
-    if (!currentUser) return;
-
+  const fetchUnreadCounts = async () => {
+    if (!currentUser?._id) return;
     try {
-      const response = await api.get('/messages/conversations');
-      const conversations = response.data;
-
+      const res = await api.get('/messages/conversations');
       const counts = {};
-      conversations.forEach(conv => {
-        const otherUser = conv.participants.find(p => p._id !== currentUser._id);
+      res.data.forEach(conv => {
+        const otherUser = conv.participants?.find(p => p._id !== currentUser._id);
         if (otherUser) {
-          const unreadCount = conv.unreadCount?.get?.(currentUser._id) || 0;
-          if (unreadCount > 0) {
-            counts[otherUser._id] = unreadCount;
+          let unread = 0;
+          if (conv.unreadCount) {
+            unread = typeof conv.unreadCount.get === 'function' 
+              ? conv.unreadCount.get(currentUser._id) || 0
+              : conv.unreadCount[currentUser._id] || 0;
           }
+          if (unread > 0) counts[otherUser._id] = unread;
         }
       });
-
       setUnreadCounts(counts);
-    } catch (error) {
-      console.error('Error fetching unread counts:', error);
-    }
+    } catch (err) { console.error('Fetch unread counts error:', err); }
   };
 
-  const resetUnreadCountForUser = async (userId) => {
+  const markAsRead = async (userId) => {
     try {
       await api.post(`/messages/mark-as-read/${userId}`);
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
-
-  // CHATNV.JSX - Thêm sau resetUnreadCountForUser
-  const fetchTotalMessages = async () => {
-    setStatsLoading(true);
-    try {
-      const response = await api.get('/messages/stats/total');
-      setTotalMessages(response.data.total);
-    } catch (error) {
-      console.error('Error fetching total messages:', error);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-  const updateConversations = async () => {
-    await fetchConversations();
-    await fetchAllUnreadCounts();
+    } catch (err) { console.error('Mark as read error:', err); }
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedUser || sending) return;
+    if (!newMessage.trim() || !selectedUser || sending || !currentUser) return;
 
     setSending(true);
-    const messageContent = newMessage.trim();
+    const content = newMessage.trim();
     setNewMessage('');
 
     const tempMessage = {
       _id: Date.now(),
-      content: messageContent,
-      sender: { _id: currentUser?._id },
+      content,
+      sender: { _id: currentUser._id },
       receiver: { _id: selectedUser._id },
       createdAt: new Date(),
       isTemp: true
@@ -275,16 +206,15 @@ const ChatNV = () => {
     try {
       await api.post('/messages/send', {
         receiverId: selectedUser._id,
-        content: messageContent
+        content
       });
-
-      setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id));
-      updateConversations();
-    } catch (error) {
-      console.error('Error sending message:', error);
+      setMessages(prev => prev.filter(m => m._id !== tempMessage._id));
+      fetchConversations();
+    } catch (err) {
+      console.error('Send message error:', err);
+      setMessages(prev => prev.filter(m => m._id !== tempMessage._id));
+      setNewMessage(content);
       alert('Gửi tin nhắn thất bại');
-      setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id));
-      setNewMessage(messageContent);
     } finally {
       setSending(false);
     }
@@ -292,54 +222,38 @@ const ChatNV = () => {
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-
-    if (!isTyping && e.target.value.trim() && selectedUser) {
-      setIsTyping(true);
-      socketRef.current?.emit('typing', {
-        receiverId: selectedUser._id,
-        isTyping: true
-      });
+    
+    if (!userTyping && e.target.value.trim() && selectedUser) {
+      socketRef.current?.emit('typing', { receiverId: selectedUser._id, isTyping: true });
     }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
+    
+    clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      if (isTyping && selectedUser) {
-        setIsTyping(false);
-        socketRef.current?.emit('typing', {
-          receiverId: selectedUser._id,
-          isTyping: false
-        });
+      if (selectedUser) {
+        socketRef.current?.emit('typing', { receiverId: selectedUser._id, isTyping: false });
       }
     }, 1000);
   };
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = () => {
     if (!loading && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      await fetchMessages(nextPage);
+      fetchMessages(nextPage);
     }
   };
 
   const handleScroll = (e) => {
-    const { scrollTop } = e.target;
-    if (scrollTop === 0 && !loading && hasMore) {
-      handleLoadMore();
-    }
+    if (e.target.scrollTop === 0 && !loading && hasMore) handleLoadMore();
   };
 
-  const filteredEmployees = employees.filter(emp =>
-    emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employeeId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getAvatarUrl = (name) => {
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4f46e5&color=fff`;
+  };
 
   const formatTime = (date) => {
-    const now = new Date();
     const msgDate = new Date(date);
+    const now = new Date();
     const diffMs = now - msgDate;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
@@ -352,36 +266,71 @@ const ChatNV = () => {
     return msgDate.toLocaleDateString('vi-VN');
   };
 
-  if (!currentUser) {
-    return <div className="loading">Loading...</div>;
-  }
-  const getUserRoleLabel = (user) => {
+  const getRoleLabel = (role) => {
+    const roles = { admin: 'AD', teacher: 'GV', employee: 'NV' };
+    return roles[role] || 'NV';
+  };
+
+  // THÊM: lấy danh sách users theo tab
+  const getFilteredUsers = () => {
+    const users = activeTab === 'employees' ? employees : teachers;
+    return users.filter(user =>
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.teacherCode?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // THÊM: lấy label cho user
+  const getUserLabel = (user) => {
+    if (user.role === 'teacher') return 'Giảng viên';
     if (user.role === 'admin') return 'Quản trị viên';
-    if (user.role === 'manager') return 'Quản lý';
-    if (user.role === 'employee') return 'Nhân viên';
     return 'Nhân viên';
   };
+
+  const filteredUsers = getFilteredUsers();
+
+  if (!currentUser) return <div className="loading">Đang tải...</div>;
+
   return (
     <div className="chat-container">
       {/* Sidebar */}
       <div className="chat-sidebar">
         <div className="sidebar-header-chat">
           <h3>💬 Tin nhắn</h3>
+          
+          {/* THÊM: Tabs */}
+          <div className="chat-tabs">
+            <button 
+              className={`tab-btn ${activeTab === 'employees' ? 'active' : ''}`}
+              onClick={() => setActiveTab('employees')}
+            >
+              👥 Nhân viên ({employees.length})
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'teachers' ? 'active' : ''}`}
+              onClick={() => setActiveTab('teachers')}
+            >
+              👨‍🏫 Giảng viên ({teachers.length})
+            </button>
+          </div>
+
           <div className="search-box-chat">
             <input
               type="text"
-              placeholder="🔍 Tìm kiếm nhân viên..."
+              placeholder="🔍 Tìm kiếm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Phần conversations list - scroll riêng */}
         <div className="conversations-list">
-          {/* Conversations section */}
+          {/* Conversations - tin nhắn gần đây */}
+          <div className="section-title">📋 Tin nhắn gần đây</div>
           {conversations.map(conv => {
-            const otherUser = conv.participants.find(p => p._id !== currentUser._id);
+            const otherUser = conv.participants?.find(p => p._id !== currentUser._id);
             if (!otherUser) return null;
             const unread = unreadCounts[otherUser._id] || 0;
 
@@ -392,14 +341,12 @@ const ChatNV = () => {
                 onClick={() => setSelectedUser(otherUser)}
               >
                 <div className="conversation-avatar">
-                  <img src={otherUser.avatar || '/default-avatar.png'} alt={otherUser.name} />
-                  {otherUser.isActive && <span className="online-status"></span>}
+                  <img src={otherUser.avatar || getAvatarUrl(otherUser.name)} alt="" />
                 </div>
                 <div className="conversation-info">
                   <div className="conversation-name">
                     {otherUser.name}
-                    {otherUser.role === 'manager' && <span className="role-badge manager">QL</span>}
-                    {otherUser.role === 'user' && <span className="role-badge staff">NV</span>}
+                    <span className="role-badge">{getRoleLabel(otherUser.role)}</span>
                   </div>
                   <div className="conversation-last-message">
                     {conv.lastMessage?.substring(0, 50) || 'Chưa có tin nhắn'}
@@ -413,72 +360,75 @@ const ChatNV = () => {
             );
           })}
 
-          {/* Employees section */}
-          <div className="employees-section">
-            <div className="section-title">📋 Tất cả nhân viên</div>
-            {filteredEmployees.map(emp => {
-              const unread = unreadCounts[emp._id] || 0;
-              return (
-                <div
-                  key={emp._id}
-                  className={`employee-item ${selectedUser?._id === emp._id ? 'active' : ''}`}
-                  onClick={() => setSelectedUser(emp)}
-                >
-                  <div className="employee-avatar-chat">
-                    <img src={emp.avatar || '/default-avatar.png'} alt={emp.name} />
-                  </div>
-                  <div className="employee-info-chat">
-                    <div className="employee-name-chat">
-                      {emp.name || emp.email}
-                      {emp.employeeId && <span className="employee-id">({emp.employeeId})</span>}
-                    </div>
-                    <div className="employee-email">{emp.email}</div>
-                  </div>
-                  {unread > 0 && <div className="unread-badge">{unread > 99 ? '99+' : unread}</div>}
-                </div>
-              );
-            })}
-
-            {filteredEmployees.length === 0 && (
-              <div className="no-users">
-                <p>Không tìm thấy nhân viên</p>
-              </div>
-            )}
+          {/* Users list theo tab */}
+          <div className="section-title">
+            {activeTab === 'employees' ? '📋 Tất cả nhân viên' : '📋 Tất cả giảng viên'}
           </div>
+          
+          {filteredUsers.map(user => {
+            const unread = unreadCounts[user._id] || 0;
+            return (
+              <div
+                key={user._id}
+                className={`employee-item ${selectedUser?._id === user._id ? 'active' : ''}`}
+                onClick={() => setSelectedUser(user)}
+              >
+                <div className="employee-avatar-chat">
+                  <img src={user.avatar || getAvatarUrl(user.name)} alt="" />
+                </div>
+                <div className="employee-info-chat">
+                  <div className="employee-name-chat">
+                    {user.name || user.email}
+                    {user.employeeId && <span className="employee-id">({user.employeeId})</span>}
+                    {user.teacherCode && <span className="employee-id">({user.teacherCode})</span>}
+                  </div>
+                  <div className="employee-email">{user.email}</div>
+                  <div className="employee-role">{getUserLabel(user)}</div>
+                </div>
+                {unread > 0 && <div className="unread-badge">{unread > 99 ? '99+' : unread}</div>}
+              </div>
+            );
+          })}
+          
+          {filteredUsers.length === 0 && (
+            <div className="no-users">
+              <p>
+                {activeTab === 'employees' 
+                  ? 'Không tìm thấy nhân viên' 
+                  : 'Không tìm thấy giảng viên'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main chat area */}
+      {/* Chat area - giữ nguyên */}
       <div className="chat-main">
         {selectedUser ? (
           <>
             <div className="chat-header">
               <div className="chat-user-info">
-                <img src={selectedUser.avatar || '/default-avatar.png'} alt={selectedUser.name} className="chat-avatar" />
+                <img src={selectedUser.avatar || getAvatarUrl(selectedUser.name)} alt="" className="chat-avatar" />
                 <div>
                   <div className="chat-user-name">
                     {selectedUser.name || selectedUser.email}
-                    {selectedUser.employeeId && <span className="user-employee-id"> - {selectedUser.employeeId}</span>}
+                    {(selectedUser.employeeId || selectedUser.teacherCode) && 
+                      <span className="user-employee-id"> - {selectedUser.employeeId || selectedUser.teacherCode}</span>
+                    }
                   </div>
                   <div className="chat-user-status">
-                    {userTyping ? (
-                      <span className="typing-indicator">Đang nhập...</span>
-                    ) : (
-                      <span className="user-role">{selectedUser.role === 'manager' ? 'Quản lý' : 'Nhân viên'}</span>
-                    )}
+                    {userTyping ? 
+                      <span className="typing-indicator">Đang nhập...</span> : 
+                      <span>{getUserLabel(selectedUser)}</span>
+                    }
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="messages-area" ref={messagesContainerRef} onScroll={handleScroll}>
-              {loading && page === 1 && (
-                <div className="loading-messages">
-                  <div className="spinner"></div>
-                  <span>Đang tải tin nhắn...</span>
-                </div>
-              )}
-
+              {loading && page === 1 && <div className="loading-messages">Đang tải...</div>}
+              
               {!loading && messages.length === 0 && (
                 <div className="no-messages">
                   <div className="no-messages-icon">💬</div>
@@ -487,36 +437,28 @@ const ChatNV = () => {
                 </div>
               )}
 
-              {messages.map((message, index) => {
-                const isOwn = message.sender._id === currentUser._id;
-                const showAvatar = index === 0 || messages[index - 1]?.sender._id !== message.sender._id;
-
+              {messages.map((msg, idx) => {
+                const isOwn = msg.sender?._id === currentUser._id;
+                const showAvatar = idx === 0 || messages[idx - 1]?.sender?._id !== msg.sender?._id;
+                
                 return (
-                  <div key={message._id} className={`message-wrapper ${isOwn ? 'own' : 'other'}`}>
+                  <div key={msg._id} className={`message-wrapper ${isOwn ? 'own' : 'other'}`}>
                     {!isOwn && showAvatar && (
-                      <img src={message.sender.avatar || '/default-avatar.png'} alt="" className="message-avatar" />
+                      <img src={msg.sender?.avatar || getAvatarUrl(msg.sender?.name)} alt="" className="message-avatar" />
                     )}
-                    <div className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isTemp ? 'temp' : ''}`}>
-                      {!isOwn && showAvatar && (
-                        <div className="message-sender-name">{message.sender.name || message.sender.email}</div>
-                      )}
-                      <div className="message-content">{message.content}</div>
+                    <div className={`message-bubble ${isOwn ? 'own' : 'other'} ${msg.isTemp ? 'temp' : ''}`}>
+                      {!isOwn && showAvatar && <div className="message-sender-name">{msg.sender?.name || msg.sender?.email}</div>}
+                      <div className="message-content">{msg.content}</div>
                       <div className="message-time">
-                        {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                        {message.isTemp && <span className="sending-status"> • Đang gửi...</span>}
+                        {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        {msg.isTemp && <span className="sending-status"> • Đang gửi...</span>}
                       </div>
                     </div>
                   </div>
                 );
               })}
-
-              {loading && page > 1 && (
-                <div className="loading-more">
-                  <div className="spinner-small"></div>
-                  <span>Đang tải thêm...</span>
-                </div>
-              )}
-
+              
+              {loading && page > 1 && <div className="loading-more">Đang tải thêm...</div>}
               <div ref={messagesEndRef} />
             </div>
 
@@ -538,7 +480,7 @@ const ChatNV = () => {
           <div className="no-chat-selected">
             <div className="no-chat-icon">💬</div>
             <h3>Chào mừng đến với tin nhắn</h3>
-            <p>Chọn một nhân viên để bắt đầu trò chuyện</p>
+            <p>Chọn một nhân viên hoặc giảng viên để bắt đầu trò chuyện</p>
           </div>
         )}
       </div>

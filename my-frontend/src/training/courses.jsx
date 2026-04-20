@@ -41,7 +41,7 @@ const TrainingManagement = () => {
     description: '',
     targetAudience: '',
     prerequisites: '',
-    certificate: 'Chứng chỉ',
+    
     maxParticipants: 30,
     minParticipants: 10,
     startDate: '',
@@ -205,7 +205,7 @@ const TrainingManagement = () => {
         description: '',
         targetAudience: '',
         prerequisites: '',
-        certificate: 'Chứng chỉ',
+         
         maxParticipants: 30,
         minParticipants: 10,
         startDate: '',
@@ -396,8 +396,7 @@ const TrainingManagement = () => {
                       <th>Khoa</th>
                       <th>Ngày đăng ký</th>
                       <th>Trạng thái</th>
-                      <th>Điểm</th>
-                      <th>Chứng chỉ</th>
+                    
                       
                     </tr>
                   </thead>
@@ -410,22 +409,7 @@ const TrainingManagement = () => {
                         <td>{enrollment.teacher?.faculty}</td>
                         <td>{new Date(enrollment.registrationDate).toLocaleDateString('vi-VN')}</td>
                         <td>{getStatusBadge(enrollment.status)}</td>
-                        <td>{enrollment.scores?.total ? `${enrollment.scores.total.toFixed(1)}` : '-'}</td>
-                        <td>
-                          {enrollment.certificateIssued?.issued ? (
-                            <span className="certificate-issued">
-                              <FaCertificate /> Đã cấp
-                            </span>
-                          ) : (
-                            <button
-                              className="btn-small"
-                              onClick={() => handleIssueCertificate(enrollment._id)}
-                              disabled={enrollment.status !== 'Hoàn thành'}
-                            >
-                              Cấp CC
-                            </button>
-                          )}
-                        </td>
+                     
                       
                       </tr>
                     ))}
@@ -450,12 +434,12 @@ const TrainingManagement = () => {
               </div>
 
               <div className="stat-card-large">
-                <h3>Đăng ký & Chứng chỉ</h3>
+                <h3>Đăng ký</h3>
                 <div className="stats-numbers">
                   <div><span className="stat-value">{statistics.enrollments?.total || 0}</span> Tổng lượt</div>
                   <div><span className="stat-value text-success">{statistics.enrollments?.completed || 0}</span> Hoàn thành</div>
                   <div><span className="stat-value text-warning">{statistics.enrollments?.inProgress || 0}</span> Đang học</div>
-                  <div><span className="stat-value text-info">{statistics.enrollments?.certificatesIssued || 0}</span> Chứng chỉ</div>
+       
                 </div>
               </div>
             </div>
@@ -636,17 +620,7 @@ const TrainingManagement = () => {
                           min="1"
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Loại chứng chỉ *</label>
-                        <select
-                          value={programForm.certificate}
-                          onChange={(e) => setProgramForm({ ...programForm, certificate: e.target.value })}
-                        >
-                          <option value="Chứng chỉ">Chứng chỉ</option>
-                          <option value="Chứng nhận">Chứng nhận</option>
-                          <option value="Văn bằng">Văn bằng</option>
-                        </select>
-                      </div>
+                 
                     </div>
 
                     <div className="form-group">

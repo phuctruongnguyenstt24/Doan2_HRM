@@ -7,6 +7,7 @@ import './layout.css';
 const MainLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pageTitle, setPageTitle] = useState('Trang chủ'); // Thêm state này
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -21,9 +22,10 @@ const MainLayout = () => {
       {/* Sidebar cho Desktop */}
       <div className={`desktop-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <Sidebar 
-          collapsed={sidebarCollapsed} // Truyền prop collapsed
-          onToggle={toggleSidebar}    // Truyền hàm toggle
-          onClose={() => setMobileMenuOpen(false)} // Thêm prop onClose
+          collapsed={sidebarCollapsed}
+          onToggle={toggleSidebar}
+          onClose={() => setMobileMenuOpen(false)}
+          onPageChange={setPageTitle} // Thêm prop này
         />
       </div>
 
@@ -40,6 +42,7 @@ const MainLayout = () => {
         <Sidebar 
           collapsed={false}
           onClose={() => setMobileMenuOpen(false)}
+          onPageChange={setPageTitle} // Thêm prop này
         />
       </div>
 
@@ -50,6 +53,7 @@ const MainLayout = () => {
           onMenuToggle={toggleMobileMenu}
           onSidebarToggle={toggleSidebar}
           sidebarCollapsed={sidebarCollapsed}
+          pageTitle={pageTitle} // Truyền title xuống header
         />
         
         {/* Page Content */}

@@ -6,6 +6,7 @@ const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
@@ -190,9 +191,12 @@ const officeRoutes = require('./routes/offices');
 const DepartmentRoutes = require('./routes/departments.js');
 const contractRoutes = require('./routes/contractRoutes.js');
 const attendanceRoutes = require('./routes/attendance');
+
+const lecturerRoutes = require('./routes/lecturer.js');
 const salaryRoutes = require('./routes/salary');
 const businessTripRoutes = require('./routes/businessTrip');
 const courseRoutes = require('./routes/trainingRoutes');
+
 const messageRoutes = require('./routes/messageRoutes');
 
 // ====================
@@ -238,9 +242,11 @@ app.use('/api/offices', officeRoutes);
 app.use('/api/departments', DepartmentRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/lecturer',lecturerRoutes);
 app.use('/api/salary', salaryRoutes);
 app.use('/api/business-trips', businessTripRoutes);
 app.use('/api/training', courseRoutes);
+ 
 app.use('/api/messages', messageRoutes);
 
 // Static files cho uploads

@@ -1,7 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import './EmployeeAttendance.css';
+
+// Helper: Lấy token từ cả hai nơi
+const getToken = () => {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+};
+
+// Helper: Lấy user từ cả hai nơi
+const getUserFromStorage = () => {
+    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+    if (!userStr) return null;
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+};
 
 const EmployeeAttendance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -25,13 +40,58 @@ const EmployeeAttendance = () => {
 
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+ const token = getToken();
+  const user = getUserFromStorage();
 
-  const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
+
+  
+
+  // Helper function để fetch API
+    const fetchAPI = useCallback(async (endpoint, options = {}) => {
+    try {
+      const token = getToken();  // 👈 ĐÃ SỬA
+      if (!token) {
+        throw new Error('Vui lòng đăng nhập lại');
+      }
+
+      let url;
+      if (import.meta.env.DEV) {
+        url = `/api${endpoint}`;
+      } else {
+        url = `${API_URL}${endpoint}`;
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      if (response.status === 401) {
+        // Xóa token ở cả hai nơi
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        navigate('/login');
+        throw new Error('Phiên đăng nhập đã hết hạn');
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('API fetch error:', error);
+      throw error;
+    }
+  }, [API_URL, navigate]);
 
   // Kiểm tra đăng nhập
   useEffect(() => {
@@ -50,118 +110,139 @@ const EmployeeAttendance = () => {
   }, []);
 
   // Lấy thông tin chấm công hôm nay
-  const fetchTodayAttendance = async () => {
+  const fetchTodayAttendance = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(
-        `${API_URL}/attendance/my-attendance?date=${today}`,
-        { headers }
-      );
-      const data = await response.json();
-
+      const data = await fetchAPI(`/attendance/my-attendance?date=${today}`);
+      
       if (data.success) {
         setTodayAttendance(data.data);
+      } else {
+        setTodayAttendance(null);
       }
     } catch (error) {
       console.error('Error fetching today attendance:', error);
+      setTodayAttendance(null);
     }
-  };
+  }, [fetchAPI]);
 
   // Lấy thống kê của user
-  const fetchUserStats = async () => {
+  const fetchUserStats = useCallback(async () => {
     try {
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-      const response = await fetch(
-        `${API_URL}/attendance/my-stats?startDate=${firstDay}&endDate=${lastDay}`,
-        { headers }
-      );
-      const data = await response.json();
-
-      if (data.success) {
+      const data = await fetchAPI(`/attendance/my-stats?startDate=${firstDay}&endDate=${lastDay}`);
+      
+      if (data.success && data.data) {
         setStats(data.data);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, [fetchAPI]);
 
   // Lấy vị trí hiện tại
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
+  const getCurrentLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Trình duyệt không hỗ trợ định vị'));
+        return;
+      }
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          resolve({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
         },
         (error) => {
-          console.error('Error getting location:', error);
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
       );
+    });
+  }, []);
+
+  // Xử lý check-in
+  const handleCheckIn = async () => {
+    setActionType('checkin');
+    setError('');
+    
+    try {
+      const locationData = await getCurrentLocation();
+      setLocation(locationData);
+      setShowNoteModal(true);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      // Vẫn cho phép check-in nếu không lấy được vị trí
+      setLocation(null);
+      setShowNoteModal(true);
+      setError('Không thể lấy vị trí của bạn. Bạn vẫn có thể check-in mà không có vị trí.');
     }
   };
 
-  // Xử lý check-in
-  const handleCheckIn = () => {
-    setActionType('checkin');
-    getCurrentLocation();
-    setShowNoteModal(true);
-  };
-
   // Xử lý check-out
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     setActionType('checkout');
-    getCurrentLocation();
-    setShowNoteModal(true);
+    setError('');
+    
+    try {
+      const locationData = await getCurrentLocation();
+      setLocation(locationData);
+      setShowNoteModal(true);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setLocation(null);
+      setShowNoteModal(true);
+      setError('Không thể lấy vị trí của bạn. Bạn vẫn có thể check-out mà không có vị trí.');
+    }
   };
 
   // Xác nhận check-in/check-out
   const confirmAction = async () => {
     setLoading(true);
     setError('');
-    setMessage('');
 
     try {
       const endpoint = actionType === 'checkin'
-        ? `${API_URL}/attendance/checkin`
-        : `${API_URL}/attendance/checkout`;
+        ? '/attendance/checkin'
+        : '/attendance/checkout';
 
       const payload = {
-        note: note,
+        note: note.trim() || undefined,
         ...(location && { location })
       };
 
-      const response = await fetch(endpoint, {
+      const data = await fetchAPI(endpoint, {
         method: 'POST',
-        headers,
         body: JSON.stringify(payload)
       });
-
-      const data = await response.json();
 
       if (data.success) {
         setTodayAttendance(data.data);
         setShowNoteModal(false);
         setNote('');
         setLocation(null);
-        fetchUserStats();
-        setMessage(`✅ ${actionType === 'checkin' ? 'Check-in' : 'Check-out'} thành công!`);
+        await fetchUserStats();
+        setMessage(`✅ ${actionType === 'checkin' ? 'Check-in' : 'Check-out'} thành công lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+        
+        // Tự động ẩn thông báo sau 3 giây
+        setTimeout(() => setMessage(''), 3000);
       } else {
         setError(`❌ ${data.message || `Có lỗi xảy ra khi ${actionType === 'checkin' ? 'check-in' : 'check-out'}`}`);
       }
     } catch (error) {
-      console.error('Error:', error);
-      setError(`❌ Lỗi kết nối server khi ${actionType === 'checkin' ? 'check-in' : 'check-out'}`);
+      console.error('Error in confirmAction:', error);
+      setError(`❌ Lỗi kết nối server. Vui lòng thử lại sau.`);
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        setMessage('');
-        setError('');
-      }, 5000);
     }
   };
 
@@ -169,12 +250,13 @@ const EmployeeAttendance = () => {
   useEffect(() => {
     fetchTodayAttendance();
     fetchUserStats();
-  }, []);
+  }, [fetchTodayAttendance, fetchUserStats]);
 
   // Format thời gian
   const formatTime = (date) => {
     if (!date) return '--:--:--';
-    return new Date(date).toLocaleTimeString('vi-VN', {
+    const d = new Date(date);
+    return d.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
@@ -191,10 +273,11 @@ const EmployeeAttendance = () => {
     });
   };
 
-  // Nội dung chính của trang (bỏ phần header cũ)
+  // Kiểm tra xem đã check-in chưa
+  const hasCheckedIn = todayAttendance?.checkIn?.time;
+  const hasCheckedOut = todayAttendance?.checkOut?.time;
+
   return (
-
-
     <div className="attendance-page">
       {/* Thời gian hiện tại */}
       <div className="current-time-card">
@@ -210,7 +293,7 @@ const EmployeeAttendance = () => {
         </div>
       )}
 
-      {error && (
+      {error && !showNoteModal && (
         <div className="message error">
           <i className="fas fa-exclamation-circle"></i>
           {error}
@@ -224,7 +307,7 @@ const EmployeeAttendance = () => {
           <div className="status-item">
             <span className="status-label">Check-in</span>
             <span className="status-value">
-              {todayAttendance?.checkIn?.time
+              {hasCheckedIn
                 ? formatTime(todayAttendance.checkIn.time)
                 : '--:--:--'
               }
@@ -233,7 +316,7 @@ const EmployeeAttendance = () => {
           <div className="status-item">
             <span className="status-label">Check-out</span>
             <span className="status-value">
-              {todayAttendance?.checkOut?.time
+              {hasCheckedOut
                 ? formatTime(todayAttendance.checkOut.time)
                 : '--:--:--'
               }
@@ -242,11 +325,12 @@ const EmployeeAttendance = () => {
           <div className="status-item">
             <span className="status-label">Trạng thái</span>
             <span className={`status-badge ${todayAttendance?.status || 'pending'}`}>
-              {!todayAttendance ? 'Chưa check-in' :
+              {!hasCheckedIn ? 'Chưa check-in' :
                 todayAttendance.status === 'present' ? 'Có mặt' :
-                  todayAttendance.status === 'late' ? 'Đi muộn' :
-                    todayAttendance.status === 'leave' ? 'Nghỉ phép' :
-                      todayAttendance.status === 'absent' ? 'Vắng' : 'Đang làm việc'}
+                todayAttendance.status === 'late' ? 'Đi muộn' :
+                todayAttendance.status === 'leave' ? 'Nghỉ phép' :
+                todayAttendance.status === 'absent' ? 'Vắng' : 
+                hasCheckedOut ? 'Đã hoàn thành' : 'Đang làm việc'}
             </span>
           </div>
           {todayAttendance?.workingHours > 0 && (
@@ -255,27 +339,41 @@ const EmployeeAttendance = () => {
               <span className="status-value">{todayAttendance.workingHours.toFixed(1)}h</span>
             </div>
           )}
+          {todayAttendance?.overtime > 0 && (
+            <div className="status-item">
+              <span className="status-label">Tăng ca</span>
+              <span className="status-value">{todayAttendance.overtime.toFixed(1)}h</span>
+            </div>
+          )}
         </div>
 
         {/* Nút check-in/check-out */}
         <div className="action-buttons">
-          {!todayAttendance?.checkIn?.time ? (
+          {!hasCheckedIn ? (
             <button
               className="btn-checkin"
               onClick={handleCheckIn}
               disabled={loading}
             >
-              {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-in-alt"></i>}
-              {loading ? 'Đang xử lý...' : 'CHECK-IN'}
+              {loading && actionType === 'checkin' ? (
+                <i className="fas fa-spinner fa-spin"></i>
+              ) : (
+                <i className="fas fa-sign-in-alt"></i>
+              )}
+              {loading && actionType === 'checkin' ? 'Đang xử lý...' : 'CHECK-IN'}
             </button>
-          ) : !todayAttendance?.checkOut?.time ? (
+          ) : !hasCheckedOut ? (
             <button
               className="btn-checkout"
               onClick={handleCheckOut}
               disabled={loading}
             >
-              {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
-              {loading ? 'Đang xử lý...' : 'CHECK-OUT'}
+              {loading && actionType === 'checkout' ? (
+                <i className="fas fa-spinner fa-spin"></i>
+              ) : (
+                <i className="fas fa-sign-out-alt"></i>
+              )}
+              {loading && actionType === 'checkout' ? 'Đang xử lý...' : 'CHECK-OUT'}
             </button>
           ) : (
             <div className="completed-message">
@@ -286,7 +384,10 @@ const EmployeeAttendance = () => {
         </div>
 
         <div className="attendance-note">
-          <p><i className="fas fa-info-circle"></i> Giờ làm việc: 8:00 - 17:00 (Check-in sau 8:30 sẽ tính là đi muộn)</p>
+          <p>
+            <i className="fas fa-info-circle"></i> 
+            Giờ làm việc: 8:00 - 17:00 (Check-in sau 8:30 sẽ tính là đi muộn)
+          </p>
         </div>
       </div>
 
@@ -300,7 +401,7 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Tổng ngày</span>
-              <span className="stat-value">{stats.totalDays}</span>
+              <span className="stat-value">{stats.totalDays || 0}</span>
             </div>
           </div>
 
@@ -310,7 +411,7 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Có mặt</span>
-              <span className="stat-value">{stats.presentDays}</span>
+              <span className="stat-value">{stats.presentDays || 0}</span>
             </div>
           </div>
 
@@ -320,7 +421,7 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Đi muộn</span>
-              <span className="stat-value">{stats.lateDays}</span>
+              <span className="stat-value">{stats.lateDays || 0}</span>
             </div>
           </div>
 
@@ -330,7 +431,7 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Vắng</span>
-              <span className="stat-value">{stats.absentDays}</span>
+              <span className="stat-value">{stats.absentDays || 0}</span>
             </div>
           </div>
 
@@ -340,7 +441,7 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Nghỉ phép</span>
-              <span className="stat-value">{stats.leaveDays}</span>
+              <span className="stat-value">{stats.leaveDays || 0}</span>
             </div>
           </div>
 
@@ -350,17 +451,17 @@ const EmployeeAttendance = () => {
             </div>
             <div className="stat-info">
               <span className="stat-label">Tổng giờ</span>
-              <span className="stat-value">{stats.totalHours.toFixed(1)}h</span>
+              <span className="stat-value">{stats.totalHours?.toFixed(1) || 0}h</span>
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-icon overtime">
-              <i className="fas fa-clock"></i>
+              <i className="fas fa-chart-line"></i>
             </div>
             <div className="stat-info">
               <span className="stat-label">Tăng ca</span>
-              <span className="stat-value">{stats.totalOvertime.toFixed(1)}h</span>
+              <span className="stat-value">{stats.totalOvertime?.toFixed(1) || 0}h</span>
             </div>
           </div>
         </div>
@@ -379,6 +480,7 @@ const EmployeeAttendance = () => {
                   setNote('');
                   setLocation(null);
                   setError('');
+                  setActionType(null);
                 }}
               >
                 <i className="fas fa-times"></i>
@@ -387,13 +489,21 @@ const EmployeeAttendance = () => {
 
             <div className="modal-body">
               <p className="modal-time">
-                <i className="fas fa-clock"></i> Thời gian: {formatTime(currentTime)}
+                <i className="fas fa-clock"></i> 
+                Thời gian: {formatTime(currentTime)}
               </p>
 
               {location && (
                 <p className="location-info">
                   <i className="fas fa-map-marker-alt"></i>
-                  Đã lấy vị trí của bạn
+                  Đã lấy vị trí của bạn (vĩ độ: {location.lat.toFixed(4)}, kinh độ: {location.lng.toFixed(4)})
+                </p>
+              )}
+
+              {!location && (
+                <p className="location-warning">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  Không thể xác định vị trí. Bạn vẫn có thể tiếp tục.
                 </p>
               )}
 
@@ -403,7 +513,7 @@ const EmployeeAttendance = () => {
                   className="form-input-NV"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Nhập ghi chú..."
+                  placeholder="Nhập ghi chú (nếu có)..."
                   rows="3"
                 />
               </div>
@@ -424,6 +534,7 @@ const EmployeeAttendance = () => {
                   setNote('');
                   setLocation(null);
                   setError('');
+                  setActionType(null);
                 }}
               >
                 Hủy
@@ -433,15 +544,20 @@ const EmployeeAttendance = () => {
                 onClick={confirmAction}
                 disabled={loading}
               >
-                {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Xác nhận'}
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  'Xác nhận'
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-
-
   );
 };
 

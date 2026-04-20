@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaUsers,
   FaCheckCircle,
@@ -31,25 +31,64 @@ const AttendanceManagement = () => {
     limit: 20
   });
 
-  // Sử dụng biến môi trường
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Thêm useEffect để log URL đang dùng
-  useEffect(() => {
-    console.log('🌐 API_URL from env:', API_URL);
-    console.log('🌐 Will proxy through Vite dev server');
-  }, []);
+  // Helper function để fetch API
+const fetchAPI = useCallback(async (endpoint, options = {}) => {
+  try {
+    // Lấy token từ cả localStorage và sessionStorage
+    let token = localStorage.getItem('token');
+    if (!token) {
+      token = sessionStorage.getItem('token');
+    }
+    
+    if (!token) {
+      throw new Error('Vui lòng đăng nhập lại');
+    }
+    
+    let url;
+    if (import.meta.env.DEV) {
+      url = `/api${endpoint}`;
+    } else {
+      url = `${API_URL}${endpoint}`;
+    }
 
-  // Token từ localStorage
-  const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
 
-  // Headers cho API requests
-  const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-  // Thêm hàm này trước khi sử dụng
-  const getSampleEmployees = () => {
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+
+    if (response.status === 401) {
+      // Xóa token từ cả hai nơi
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
+      
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API fetch error:', error);
+    throw error;
+  }
+}, [API_URL]);
+
+  // Dữ liệu mẫu
+  const getSampleEmployees = useCallback(() => {
     return [
       {
         id: '1',
@@ -76,115 +115,13 @@ const AttendanceManagement = () => {
         hourlyRate: 150000
       }
     ];
-  };
-  // Helper function để fetch với error handling tốt hơn
-  // AttendanceManagement.jsx - Sửa phần fetchAPI
-
-const fetchAPI = async (endpoint, options = {}) => {
-  try {
-    // LẤY TOKEN TRƯỚC
-    const token = localStorage.getItem('token');
-    
-    console.log('🔑 [DEBUG] Token from localStorage:', {
-      exists: !!token,
-      value: token ? `${token.substring(0, 30)}...` : 'null',
-      length: token?.length
-    });
-    
-    if (!token) {
-      console.error('❌ No token found! User may not be logged in');
-      throw new Error('Vui lòng đăng nhập lại');
-    }
-    
-    let url;
-    if (import.meta.env.DEV) {
-      url = `/api${endpoint}`;
-      console.log('🔄 Dev mode - using proxy:', url);
-    } else {
-      url = `${API_URL}${endpoint}`;
-    }
-
-    // TẠO HEADERS ĐÚNG CÁCH
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // QUAN TRỌNG: Phải có Bearer
-    };
-    
-    console.log('📤 Request Headers:', {
-      url,
-      method: options.method || 'GET',
-      'Authorization': headers.Authorization ? 'Bearer [TOKEN]' : 'MISSING',
-      'Content-Type': headers['Content-Type']
-    });
-
-    const response = await fetch(url, {
-      ...options,
-      headers  // Gửi headers đã tạo
-    });
-
-    if (response.status === 401) {
-      const errorText = await response.text();
-      console.error('🔐 401 Response:', errorText);
-      
-      // Xóa token cũ
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-      window.location.href = '/login';
-      throw new Error('Unauthorized');
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ API fetch error:', error);
-    throw error;
-  }
-};
-
-  // Thêm useEffect để load dữ liệu mẫu nếu API không có
-  useEffect(() => {
-    if (employees.length === 0) {
-      console.log('📝 Using sample employee data for testing');
-      setEmployees([
-        {
-          employeeId: 'GV001',
-          name: 'Nguyễn Văn A',
-          department: 'Khoa Công Nghệ Thông Tin',
-          position: 'Giảng viên',
-          hourlyRate: 150000
-        },
-        {
-          employeeId: 'NV001',
-          name: 'Trần Thị B',
-          department: 'Phòng Đào Tạo',
-          position: 'Nhân viên',
-          hourlyRate: 80000
-        },
-        {
-          employeeId: 'GV002',
-          name: 'Lê Văn C',
-          department: 'Khoa Kinh Tế',
-          position: 'Giảng viên',
-          hourlyRate: 150000
-        }
-      ]);
-    }
-  }, [employees.length]);
-
-  // ==================== API CALLS ====================
+  }, []);
 
   // Lấy danh sách phòng ban
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const data = await fetchAPI('/departments');
-
-      if (data.success) {
+      if (data.success && data.data) {
         setDepartments([
           { id: 'all', name: 'Tất cả phòng ban' },
           ...data.data.map(dept => ({
@@ -192,10 +129,17 @@ const fetchAPI = async (endpoint, options = {}) => {
             name: dept.name
           }))
         ]);
+      } else {
+        // Fallback data
+        setDepartments([
+          { id: 'all', name: 'Tất cả phòng ban' },
+          { id: '1', name: 'Khoa Công Nghệ Thông Tin' },
+          { id: '2', name: 'Khoa Kinh Tế' },
+          { id: '3', name: 'Phòng Đào Tạo' }
+        ]);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);
-      // Fallback data
       setDepartments([
         { id: 'all', name: 'Tất cả phòng ban' },
         { id: '1', name: 'Khoa Công Nghệ Thông Tin' },
@@ -203,64 +147,55 @@ const fetchAPI = async (endpoint, options = {}) => {
         { id: '3', name: 'Phòng Đào Tạo' }
       ]);
     }
-  };
+  }, [fetchAPI]);
 
   // Lấy danh sách nhân viên
-  // Sửa lại hàm fetchEmployees
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
-      console.log('🔵 Đang tải danh sách nhân viên...');
-      const token = localStorage.getItem('token');
-
-      // Kiểm tra token có tồn tại không
-      if (!token) {
-        console.warn('⚠️ Không tìm thấy token. Vui lòng đăng nhập lại.');
-        setEmployees(getSampleEmployees());
-        return;
-      }
-
       const data = await fetchAPI('/users-permissions/users?limit=100');
-
-      // Hỗ trợ cả 2 định dạng dữ liệu
-      const users = data.users || data;
-
-      if (!Array.isArray(users) || users.length === 0) {
-        console.log('⚠️ Không có dữ liệu nhân viên, đang dùng dữ liệu mẫu');
+      
+      let users = [];
+      if (data.users && Array.isArray(data.users)) {
+        users = data.users;
+      } else if (Array.isArray(data)) {
+        users = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        users = data.data;
+      }
+      
+      if (users.length === 0) {
         setEmployees(getSampleEmployees());
         return;
       }
 
       const formattedEmployees = users.map(user => ({
         id: user._id || user.id,
-        employeeId: user.employeeId || user._id || user.id,
+        employeeId: user.employeeId || user.code || user._id,
         name: user.fullName || user.name || 'Không có tên',
         department: user.department?.name || user.department || 'Chưa có',
         position: user.position || 'Nhân viên',
         hourlyRate: user.hourlyRate || 80000
       }));
 
-      console.log('✅ Đã tải xong nhân viên:', formattedEmployees);
       setEmployees(formattedEmployees);
-
     } catch (error) {
-      console.error('❌ Lỗi khi tải nhân viên:', error);
-      // Nếu lỗi 401, thông báo đăng nhập lại
-      if (error.message.includes('401')) {
-        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        // Có thể chuyển hướng về trang đăng nhập ở đây
-      }
+      console.error('Error fetching employees:', error);
       setEmployees(getSampleEmployees());
     }
-  };
+  }, [fetchAPI, getSampleEmployees]);
+
   // Lấy dữ liệu chấm công
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     setLoading(true);
     setError(null);
-
+    
     try {
+      const pageNum = pagination.currentPage;
+      const limitNum = pagination.limit;
+      
       const params = new URLSearchParams({
-        page: pagination.currentPage,
-        limit: pagination.limit,
+        page: pageNum,
+        limit: limitNum,
         startDate: selectedDate,
         endDate: selectedDate,
         ...(selectedDepartment !== 'all' && { department: selectedDepartment }),
@@ -268,18 +203,18 @@ const fetchAPI = async (endpoint, options = {}) => {
       });
 
       const data = await fetchAPI(`/attendance/admin/attendance?${params}`);
-
-      if (data.success) {
+      
+      if (data.success && data.data) {
         const formattedData = data.data.map(record => ({
           id: record._id,
-          employeeId: record.employeeId,
-          employeeName: record.userId?.fullName || record.userId?.name || 'N/A',
-          department: record.departmentName || record.userId?.department?.name || 'Chưa có phòng ban',
+          employeeId: record.employeeId || record.userId?.employeeId,
+          employeeName: record.userId?.fullName || record.userId?.name || record.employeeName || 'N/A',
+          department: record.departmentName || record.userId?.department?.name || 'Chưa có',
           position: record.userId?.position || 'Nhân viên',
-          date: new Date(record.date).toISOString().split('T')[0],
-          checkIn: record.checkIn?.time ? new Date(record.checkIn.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : null,
-          checkOut: record.checkOut?.time ? new Date(record.checkOut.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : null,
-          status: record.status,
+          date: record.date?.split('T')[0] || selectedDate,
+          checkIn: record.checkIn?.time ? new Date(record.checkIn.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : (record.checkIn || null),
+          checkOut: record.checkOut?.time ? new Date(record.checkOut.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : (record.checkOut || null),
+          status: record.status || 'absent',
           workingHours: record.workingHours || 0,
           overtime: record.overtime || 0,
           leaveType: record.leaveType
@@ -288,19 +223,134 @@ const fetchAPI = async (endpoint, options = {}) => {
         setAttendanceData(formattedData);
         setPagination(prev => ({
           ...prev,
-          totalPages: data.pagination.totalPages,
-          totalItems: data.pagination.totalItems
+          totalPages: data.pagination?.totalPages || 1,
+          totalItems: data.pagination?.totalItems || 0
         }));
+      } else {
+        setAttendanceData([]);
       }
     } catch (error) {
-      console.error('Error fetching attendance:', error);
+      console.error('Fetch attendance error:', error);
       setError('Không thể tải dữ liệu chấm công');
+      setAttendanceData([]);
     } finally {
       setLoading(false);
     }
+  }, [selectedDate, selectedDepartment, filterStatus, pagination.currentPage, pagination.limit, fetchAPI]);
+
+  // Thêm chấm công mới
+  const handleAddAttendance = async () => {
+    if (!selectedRecord?.employeeId) {
+      alert('Vui lòng chọn nhân viên');
+      return;
+    }
+
+    const employee = employees.find(emp => emp.employeeId === selectedRecord.employeeId);
+
+    if (!employee) {
+      alert('Không tìm thấy thông tin nhân viên');
+      return;
+    }
+
+    try {
+      const checkInTime = selectedRecord.checkIn || '08:00';
+      const checkOutTime = selectedRecord.checkOut || '17:00';
+
+      const payload = {
+        userId: employee.id || employee.employeeId,
+        employeeId: selectedRecord.employeeId,
+        date: selectedDate,
+        checkIn: checkInTime,
+        checkOut: checkOutTime,
+        status: selectedRecord.status,
+        leaveType: selectedRecord.leaveType || null,
+        workingHours: parseFloat(selectedRecord.workingHours) || 0,
+        overtime: parseFloat(selectedRecord.overtime) || 0,
+        notes: ''
+      };
+
+      const data = await fetchAPI('/attendance/admin/attendance', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (data.success) {
+        setShowEditModal(false);
+        setSelectedRecord(null);
+        await fetchAttendance();
+        alert('Thêm chấm công thành công!');
+      } else {
+        alert(data.message || 'Thêm thất bại');
+      }
+    } catch (error) {
+      console.error('Error adding attendance:', error);
+      alert('Có lỗi xảy ra: ' + error.message);
+    }
   };
 
-  // Sửa hàm handleEdit
+  // Cập nhật chấm công
+  const handleSaveEdit = async () => {
+    if (!selectedRecord?.id || selectedRecord.id.toString().startsWith('temp-')) {
+      alert('ID không hợp lệ');
+      return;
+    }
+
+    try {
+      const updateData = {
+        checkIn: selectedRecord.checkIn || '08:00',
+        checkOut: selectedRecord.checkOut || '17:00',
+        status: selectedRecord.status,
+        leaveType: selectedRecord.leaveType || null,
+        workingHours: parseFloat(selectedRecord.workingHours) || 0,
+        overtime: parseFloat(selectedRecord.overtime) || 0
+      };
+
+      const data = await fetchAPI(`/attendance/admin/attendance/${selectedRecord.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData)
+      });
+
+      if (data.success) {
+        setShowEditModal(false);
+        setSelectedRecord(null);
+        await fetchAttendance();
+        alert('Cập nhật thành công!');
+      } else {
+        alert(data.message || 'Cập nhật thất bại');
+      }
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      alert('Có lỗi xảy ra: ' + error.message);
+    }
+  };
+
+  // Xóa chấm công
+  const handleDelete = async (id) => {
+    if (!id || id.toString().startsWith('temp-')) {
+      alert('Không thể xóa bản ghi này');
+      return;
+    }
+
+    if (!window.confirm('Bạn có chắc muốn xóa bản ghi này?')) return;
+
+    try {
+      const data = await fetchAPI(`/attendance/admin/attendance/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (data.success) {
+        await fetchAttendance();
+        alert('Xóa thành công!');
+      } else {
+        alert(data.message || 'Xóa thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting attendance:', error);
+      alert('Có lỗi xảy ra: ' + error.message);
+    }
+  };
+
+  // Xử lý chỉnh sửa
   const handleEdit = (record) => {
     if (record.id && !record.id.toString().startsWith('temp-')) {
       setSelectedRecord(record);
@@ -310,7 +360,7 @@ const fetchAPI = async (endpoint, options = {}) => {
     }
   };
 
-  // Xử lý khi bấm nút thêm mới
+  // Xử lý thêm mới
   const handleAddClick = () => {
     const newRecord = {
       employeeId: '',
@@ -318,166 +368,19 @@ const fetchAPI = async (endpoint, options = {}) => {
       department: '',
       position: '',
       date: selectedDate,
-      checkIn: '08:00',  // String đơn giản
-      checkOut: '17:00', // String đơn giản
+      checkIn: '08:00',
+      checkOut: '17:00',
       status: 'present',
       workingHours: 8,
       overtime: 0,
       leaveType: null
     };
-
     setSelectedRecord(newRecord);
     setShowEditModal(true);
   };
 
-  // Thêm chấm công mới
-  const handleAddAttendance = async () => {
-    if (!selectedRecord?.employeeId) {
-      alert('Vui lòng chọn nhân viên');
-      return;
-    }
-
-    // Tìm employee object để lấy userId
-    const employee = employees.find(emp => emp.employeeId === selectedRecord.employeeId);
-
-    if (!employee) {
-      alert('Không tìm thấy thông tin nhân viên');
-      return;
-    }
-
-    try {
-      // Đảm bảo checkIn và checkOut là string đơn giản (HH:mm)
-      const checkInTime = selectedRecord.checkIn || '08:00';
-      const checkOutTime = selectedRecord.checkOut || '17:00';
-
-      const attendanceData = {
-        userId: employee.id || employee.employeeId,
-        employeeId: selectedRecord.employeeId,
-        date: selectedDate,
-        checkIn: checkInTime,  // Gửi trực tiếp string "HH:mm"
-        checkOut: checkOutTime, // Gửi trực tiếp string "HH:mm"
-        status: selectedRecord.status,
-        leaveType: selectedRecord.leaveType || null,
-        workingHours: parseFloat(selectedRecord.workingHours) || 0,
-        overtime: parseFloat(selectedRecord.overtime) || 0,
-        notes: ''
-      };
-
-      console.log('📤 Sending attendance data:', attendanceData);
-
-      const response = await fetch(`${API_URL}/attendance/admin/attendance`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(attendanceData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setShowEditModal(false);
-        setSelectedRecord(null);
-        fetchAttendance(); // Refresh danh sách
-        alert('✅ Thêm chấm công thành công!');
-      } else {
-        console.error('❌ Server response:', data);
-        alert(data.message || 'Có lỗi xảy ra khi thêm chấm công');
-      }
-    } catch (error) {
-      console.error('❌ Error adding attendance:', error);
-      alert('Có lỗi xảy ra khi thêm chấm công: ' + error.message);
-    }
-  };
-
-
-  // Cập nhật chấm công
-  const handleSaveEdit = async () => {
-    if (!selectedRecord.id || selectedRecord.id.toString().startsWith('temp-')) {
-      alert('ID không hợp lệ');
-      return;
-    }
-
-    try {
-      // Đảm bảo checkIn và checkOut là string đơn giản (HH:mm)
-      const checkInTime = selectedRecord.checkIn || '08:00';
-      const checkOutTime = selectedRecord.checkOut || '17:00';
-
-      const updateData = {
-        checkIn: checkInTime,  // Gửi trực tiếp string "HH:mm"
-        checkOut: checkOutTime, // Gửi trực tiếp string "HH:mm"
-        status: selectedRecord.status,
-        leaveType: selectedRecord.leaveType,
-        workingHours: parseFloat(selectedRecord.workingHours),
-        overtime: parseFloat(selectedRecord.overtime)
-      };
-
-      console.log('📤 Updating attendance data:', updateData);
-
-      const response = await fetch(`${API_URL}/attendance/admin/attendance/${selectedRecord.id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(updateData)
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setShowEditModal(false);
-        setSelectedRecord(null);
-        fetchAttendance();
-        alert('✅ Cập nhật chấm công thành công!');
-      } else {
-        alert(data.message || '❌ Có lỗi xảy ra khi cập nhật chấm công');
-      }
-    } catch (error) {
-      console.error('Error updating attendance:', error);
-      alert('❌ Có lỗi xảy ra khi cập nhật chấm công: ' + error.message);
-    }
-  };
-
-  // Xóa chấm công
-  const handleDelete = async (id) => {
-    if (!id || id.toString().startsWith('temp-')) {
-      alert('Không thể xóa bản ghi tạm thời');
-      return;
-    }
-
-    if (!window.confirm('Bạn có chắc muốn xóa bản ghi này?')) return;
-
-    try {
-      const response = await fetch(`${API_URL}/attendance/admin/attendance/${id}`, {
-        method: 'DELETE',
-        headers
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        fetchAttendance();
-        alert('✅ Xóa chấm công thành công!');
-      } else {
-        alert(data.message || '❌ Có lỗi xảy ra khi xóa chấm công');
-      }
-    } catch (error) {
-      console.error('Error deleting attendance:', error);
-      alert('❌ Có lỗi xảy ra khi xóa chấm công');
-    }
-  };
-
-
-
-  // ==================== LIFE CYCLE ====================
-
-  useEffect(() => {
-    fetchDepartments();
-    fetchEmployees();
-  }, []);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [selectedDate, selectedDepartment, filterStatus, pagination.currentPage]);
-
-  // Tính công lương
-  const calculateSalary = (record) => {
+  // Tính lương
+  const calculateSalary = useCallback((record) => {
     const employee = employees.find(e => e.employeeId === record.employeeId);
     if (!employee) return 0;
 
@@ -494,7 +397,7 @@ const fetchAPI = async (endpoint, options = {}) => {
     }
 
     return totalSalary;
-  };
+  }, [employees]);
 
   // Format tiền
   const formatCurrency = (amount) => {
@@ -514,7 +417,7 @@ const fetchAPI = async (endpoint, options = {}) => {
     totalSalary: attendanceData.reduce((sum, record) => sum + calculateSalary(record), 0)
   };
 
-  // Xử lý chuyển trang
+  // Chuyển trang
   const handlePageChange = (newPage) => {
     setPagination(prev => ({
       ...prev,
@@ -522,23 +425,31 @@ const fetchAPI = async (endpoint, options = {}) => {
     }));
   };
 
+  // Load initial data
+  useEffect(() => {
+    fetchDepartments();
+    fetchEmployees();
+  }, [fetchDepartments, fetchEmployees]);
+
+  // Load attendance when filters change
+  useEffect(() => {
+    fetchAttendance();
+  }, [selectedDate, selectedDepartment, filterStatus, pagination.currentPage, fetchAttendance]);
+
   return (
     <div className="time-tracking-container">
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header-AT">
         <h1>Quản Lý Chấm Công</h1>
-        <div className="header-actions">
-
+        <div className="header-actions-AT">
           <button className="btn-add" onClick={handleAddClick}>
             <i className="fas fa-plus"></i>
             Thêm chấm công
           </button>
-
-
         </div>
       </div>
 
-      {/* Hiển thị lỗi nếu có */}
+      {/* Error message */}
       {error && (
         <div className="error-message">
           <i className="fas fa-exclamation-circle"></i>
@@ -546,7 +457,7 @@ const fetchAPI = async (endpoint, options = {}) => {
         </div>
       )}
 
-      {/* Bộ lọc */}
+      {/* Filters */}
       <div className="filter-section-NV">
         <div className="filter-group-NV">
           <label>Ngày:</label>
@@ -572,7 +483,9 @@ const fetchAPI = async (endpoint, options = {}) => {
             className="filter-input-NV"
           >
             {departments.map(dept => (
-              <option key={dept.id} value={dept.id}>{dept.name}</option>
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
             ))}
           </select>
         </div>
@@ -601,7 +514,7 @@ const fetchAPI = async (endpoint, options = {}) => {
         </button>
       </div>
 
-      {/* Thống kê nhanh */}
+      {/* Statistics Cards */}
       <div className="stats-cards">
         <div className="stat-card total">
           <div className="stat-icon">
@@ -671,7 +584,7 @@ const fetchAPI = async (endpoint, options = {}) => {
         </div>
       )}
 
-      {/* Bảng chấm công */}
+      {/* Attendance Table */}
       {!loading && (
         <>
           <div className="attendance-table">
@@ -756,7 +669,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </table>
           </div>
 
-          {/* Phân trang */}
+          {/* Pagination */}
           {pagination.totalPages > 1 && (
             <div className="pagination">
               <button
@@ -777,7 +690,7 @@ const fetchAPI = async (endpoint, options = {}) => {
         </>
       )}
 
-      {/* Modal chỉnh sửa/thêm mới */}
+      {/* Edit/Add Modal */}
       {showEditModal && (
         <div className="modal-overlay-AT">
           <div className="modal-content-AT">
@@ -792,8 +705,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </div>
 
             <div className="modal-body">
-              {/* Hiển thị form chọn nhân viên khi thêm mới và chưa chọn nhân viên */}
-              {!selectedRecord?.employeeId && (
+              {!selectedRecord?.employeeId ? (
                 <div className="form-group-AT">
                   <label>Chọn nhân viên:</label>
                   <select
@@ -827,25 +739,16 @@ const fetchAPI = async (endpoint, options = {}) => {
                     ))}
                   </select>
                 </div>
-              )}
-
-              {/* Hiển thị thông tin nhân viên đã chọn */}
-              {selectedRecord?.employeeId && (
+              ) : (
                 <>
                   <div className="form-group-AT">
                     <label>Mã nhân viên:</label>
                     <input
                       type="text"
                       value={selectedRecord.employeeId || ""}
-                      onChange={(e) =>
-                        setSelectedRecord({
-                          ...selectedRecord,
-                          employeeId: e.target.value
-                        })
-                      }
+                      disabled
                       className="form-input-AT"
                     />
-
                   </div>
 
                   <div className="form-group-AT">
@@ -853,12 +756,7 @@ const fetchAPI = async (endpoint, options = {}) => {
                     <input
                       type="text"
                       value={selectedRecord.employeeName || ""}
-                      onChange={(e) =>
-                        setSelectedRecord({
-                          ...selectedRecord,
-                          employeeName: e.target.value
-                        })
-                      }
+                      disabled
                       className="form-input-AT"
                     />
                   </div>
@@ -942,7 +840,10 @@ const fetchAPI = async (endpoint, options = {}) => {
                       <input
                         type="number"
                         value={selectedRecord.workingHours}
-                        disabled
+                        onChange={(e) => setSelectedRecord({
+                          ...selectedRecord,
+                          workingHours: parseFloat(e.target.value)
+                        })}
                         className="form-input-AT"
                         step="0.5"
                         min="0"
@@ -966,7 +867,6 @@ const fetchAPI = async (endpoint, options = {}) => {
                     </div>
                   </div>
 
-                  {/* Nút đổi nhân viên (khi thêm mới) */}
                   {!selectedRecord.id && (
                     <button
                       className="btn-change-employee"

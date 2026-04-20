@@ -557,11 +557,11 @@ const OfficeManagement = () => {
         
         <div className="form-group">
           <label>Màu sắc đại diện</label>
-          <div className="color-picker">
+          <div className="color-picker-OFF">
             {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899'].map(color => (
               <button
                 key={color}
-                className={`color-option ${formData.color === color ? 'selected' : ''}`}
+                className={`color-option-OFF ${formData.color === color ? 'selected' : ''}`}
                 style={{ backgroundColor: color }}
                 onClick={() => setFormData({...formData, color})}
               />

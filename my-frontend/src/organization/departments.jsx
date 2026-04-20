@@ -527,8 +527,8 @@ const handleSaveDepartment = async () => {
         </button>
       </div>
       
-      <div className="form-grid">
-        <div className="form-group">
+      <div className="form-grid-DP">
+        <div className="form-group-DP">
           <label>Mã khoa *</label>
           <input
             type="text"
@@ -538,7 +538,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Tên khoa *</label>
           <input
             type="text"
@@ -548,7 +548,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Trưởng khoa *</label>
           <input
             type="text"
@@ -558,7 +558,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group full-width">
+        <div className="form-group-DP full-width">
           <label>Mô tả</label>
           <textarea
             value={formData.description}
@@ -568,7 +568,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Số giảng viên</label>
           <input
             type="number"
@@ -578,7 +578,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Số sinh viên</label>
           <input
             type="number"
@@ -588,7 +588,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Năm thành lập</label>
           <input
             type="number"
@@ -599,7 +599,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Hiệu suất (%)</label>
           <div className="range-container">
             <input
@@ -614,7 +614,7 @@ const handleSaveDepartment = async () => {
           </div>
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Ngân sách (VND)</label>
           <input
             type="number"
@@ -625,7 +625,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Trạng thái</label>
           <div className="status-options">
             <label className={`status-option ${formData.status === 'active' ? 'active' : ''}`}>
@@ -649,7 +649,7 @@ const handleSaveDepartment = async () => {
           </div>
         </div>
         
-        <div className="form-group full-width">
+        <div className="form-group-DP full-width">
           <label>Chương trình đào tạo (phân cách bằng dấu phẩy)</label>
           <input
             type="text"
@@ -659,7 +659,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group full-width">
+        <div className="form-group-DP full-width">
           <label>Hướng nghiên cứu (phân cách bằng dấu phẩy)</label>
           <input
             type="text"
@@ -669,7 +669,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Email</label>
           <input
             type="email"
@@ -679,7 +679,7 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Điện thoại</label>
           <input
             type="text"
@@ -689,13 +689,13 @@ const handleSaveDepartment = async () => {
           />
         </div>
         
-        <div className="form-group">
+        <div className="form-group-DP">
           <label>Màu sắc đại diện</label>
-          <div className="color-picker">
+          <div className="color-picker-DP">
             {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899'].map(color => (
               <button
                 key={color}
-                className={`color-option ${formData.color === color ? 'selected' : ''}`}
+                className={`color-option-DP ${formData.color === color ? 'selected' : ''}`}
                 style={{ backgroundColor: color }}
                 onClick={() => setFormData({...formData, color})}
               />

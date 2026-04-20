@@ -5,12 +5,12 @@
   max-width: 1200px;
   margin: 0 auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fa;
+  background-color: var() #f8f9fa;
   min-height: 100vh;
 }
 
 .title-BCCC {
-  color: #2c3e50;
+  color: var() #2c3e50;
   text-align: center;
   margin-bottom: 30px;
   font-weight: 600;
@@ -21,10 +21,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  background: white;
+  background: var() white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var() 0 2px 8px rgba(0, 0, 0, 0.05);
   margin-bottom: 20px;
   align-items: flex-end;
 }
@@ -37,7 +37,7 @@
 
 .filter-box label {
   font-weight: 500;
-  color: #495057;
+  color: var() #495057;
   font-size: 14px;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .filter-box input[type="date"]:focus {
-  border-color: #4dabf7;
+  border-color: var() #4dabf7;
 }
 
 /* BUTTONS */
@@ -64,7 +64,7 @@
 }
 
 .filter-box button:first-of-type {
-  background-color: #228be6;
+  background-color:  #228be6;
   color: white;
 }
 
@@ -106,23 +106,24 @@
 /* TABLE STYLING */
 .report-table {
   width: 100%;
+  margin-top: 10px;
   border-collapse: collapse;
-  background: white;
+  background: var() white;
   border-radius: 8px;
   overflow: hidden; /* Bo góc cho table */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var() 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .report-table th,
 .report-table td {
   padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px solid #f1f3f5;
+  border-bottom: 1px solid #17191a;
 }
 
 .report-table th {
-  background-color: #f1f3f5;
-  color: #495057;
+  background-color: var() #f1f3f5;
+  color: var() #495057;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 12px;
@@ -130,7 +131,8 @@
 }
 
 .report-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var() #f8f9fa;
+  color:  #228be6;
 }
 
 .report-table tbody tr:last-child td {
@@ -146,7 +148,7 @@
 /* Màu sắc cho cột Lương */
 .report-table td:last-child {
   font-weight: bold;
-  color: #2b8a3e;
+  color: var() #2b8a3e;
 }
 
 /* LOADING STATE */

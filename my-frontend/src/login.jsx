@@ -1,3 +1,4 @@
+// login.jsx - Cập nhật phần chuyển hướng
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaGoogle, FaEnvelope, FaLock } from 'react-icons/fa';
@@ -79,30 +80,39 @@ const Login = () => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Xử lý ghi nhớ đăng nhập
-        if (rememberMe) {
-          localStorage.setItem('savedEmail', formData.email);
-          localStorage.setItem('savedPassword', formData.password);
-          localStorage.setItem('rememberMe', 'true');
-          // Lưu token vĩnh viễn
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-        } else {
-          // Xóa dữ liệu đã lưu nếu không chọn ghi nhớ
-          localStorage.removeItem('savedEmail');
-          localStorage.removeItem('savedPassword');
-          localStorage.removeItem('rememberMe');
-          // Lưu token theo session
-          sessionStorage.setItem('token', data.token);
-          sessionStorage.setItem('user', JSON.stringify(data.user));
-        }
+   if (response.ok) {
+  // Xử lý ghi nhớ đăng nhập
+  if (rememberMe) {
+    localStorage.setItem('savedEmail', formData.email);
+    localStorage.setItem('savedPassword', formData.password);
+    localStorage.setItem('rememberMe', 'true');
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+  } else {
+    localStorage.removeItem('savedEmail');
+    localStorage.removeItem('savedPassword');
+    localStorage.removeItem('rememberMe');
+    sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('user', JSON.stringify(data.user));
+  }
         
-        // Chuyển hướng dựa vào role
-        if (data.user.role === 'admin') {
-          navigate('/dashboard');
-        } else {
-          navigate('/employee/teacherDashboard');
+        // ✅ Cập nhật phần chuyển hướng dựa vào role
+        console.log('User role:', data.user.role); // Debug log
+        
+        switch (data.user.role) {
+          case 'admin':
+            navigate('/dashboard');
+            break;
+          case 'teacher':
+            navigate('/teacher/dashboard');
+            break;
+          case 'employee':
+            navigate('/employee/NVDashboard');
+            break;
+          default:
+            // Nếu role không xác định, chuyển về trang mặc định
+            console.warn('Unknown role:', data.user.role);
+            navigate('/');
         }
       } else {
         setError(data.message || 'Đăng nhập thất bại');
@@ -128,7 +138,6 @@ const Login = () => {
     const urlToken = urlParams.get('token');
     
     if (urlToken) {
-      // Kiểm tra xem có remember me không
       const remember = localStorage.getItem('rememberMe') === 'true';
       
       if (remember) {
@@ -151,10 +160,19 @@ const Login = () => {
             sessionStorage.setItem('user', JSON.stringify(data.user));
           }
           
-          if (data.user.role === 'admin') {
-            navigate('/dashboard');
-          } else {
-            navigate('/employee/teacherDashboard');
+          // ✅ Cập nhật chuyển hướng cho Google login
+          switch (data.user.role) {
+            case 'admin':
+              navigate('/dashboard');
+              break;
+            case 'teacher':
+              navigate('/teacher/dashboard');
+              break;
+            case 'employee':
+              navigate('/employee/NVDashboard');
+              break;
+            default:
+              navigate('/');
           }
         }
       })
@@ -171,11 +189,26 @@ const Login = () => {
     const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
     
     if (storedToken && storedUser) {
-      const userData = JSON.parse(storedUser);
-      if (userData.role === 'admin') {
-        navigate('/dashboard');
-      } else {
-        navigate('/employee/teacherDashboard');
+      try {
+        const userData = JSON.parse(storedUser);
+        
+        // ✅ Cập nhật chuyển hướng khi refresh trang
+        switch (userData.role) {
+          case 'admin':
+            navigate('/dashboard');
+            break;
+          case 'teacher':
+            navigate('/teacher/dashboard');
+            break;
+          case 'employee':
+            navigate('/employee/NVDashboard');
+            break;
+          default:
+            // Không tự động chuyển hướng nếu role không xác định
+            console.log('Unknown role, staying on login page');
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
       }
     }
   }, [navigate]);

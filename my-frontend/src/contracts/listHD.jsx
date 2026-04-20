@@ -383,14 +383,14 @@ Ngày cập nhật: ${formatDate(detail.updatedAt)}`);
 
             {/* Thống kê nhanh */}
             {stats && (
-                <div className="stats-container">
-                    <div className="stat-box">
-                        <span className="stat-label">Tổng hợp đồng:</span>
-                        <span className="stat-value">{stats.total}</span>
+                <div className="stats-container-HD">
+                    <div className="stat-box-HD">
+                        <span className="stat-label-HD">Tổng hợp đồng:</span>
+                        <span className="stat-value-HD">{stats.total}</span>
                     </div>
-                    <div className="stat-box">
-                        <span className="stat-label">Tổng giá trị:</span>
-                        <span className="stat-value">{formatCurrency(stats.totalAmount)}</span>
+                    <div className="stat-box-HD">
+                        <span className="stat-label-HD">Tổng giá trị:</span>
+                        <span className="stat-value-HD">{formatCurrency(stats.totalAmount)}</span>
                     </div>
                 </div>
             )}

@@ -763,7 +763,7 @@ const fetchOfficeData = async () => {
                 <h3><FaHistory /> Hoạt động gần đây</h3>
                 <button
                   className="btn-view-all"
-                  onClick={() => window.location.href = '/activities'}
+                  onClick={() => window.location.href = '/users-permissions/UserManagement'}
                 >
                   Xem tất cả
                 </button>

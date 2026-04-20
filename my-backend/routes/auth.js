@@ -2,6 +2,8 @@ const router = require("express").Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Teacher = require("../models/Teacher");
+const bcrypt = require("bcryptjs");
 const AccessLog = require("../models/accessLog");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
@@ -793,6 +795,319 @@ router.post("/resend-otp", async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể gửi lại mã. Vui lòng thử lại sau.'
+    });
+  }
+});
+
+// auth routes
+ // ============= ĐĂNG NHẬP CHO GIẢNG VIÊN =============
+ // auth.js - Sửa lại endpoint teacher-login
+// auth.js - Sửa lại endpoint teacher-login
+router.post("/teacher-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập email và mật khẩu'
+      });
+    }
+
+    // Tìm giảng viên trong collection Teacher
+    const teacher = await Teacher.findOne({ email: email.toLowerCase() });
+
+    if (!teacher) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email hoặc mật khẩu không đúng'
+      });
+    }
+
+    // Kiểm tra tài khoản có bị khóa không
+    if (teacher.isLocked) {
+      return res.status(403).json({
+        success: false,
+        message: teacher.lockReason || 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.'
+      });
+    }
+
+    // Kiểm tra mật khẩu
+    let isPasswordValid = false;
+    
+    if (teacher.password) {
+      if (teacher.password.startsWith('$2a$') || teacher.password.startsWith('$2b$')) {
+        isPasswordValid = await bcrypt.compare(password, teacher.password);
+      } else {
+        isPasswordValid = (teacher.password === password);
+        if (isPasswordValid) {
+          const salt = await bcrypt.genSalt(10);
+          teacher.password = await bcrypt.hash(password, salt);
+          await teacher.save();
+        }
+      }
+    }
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email hoặc mật khẩu không đúng'
+      });
+    }
+
+    // Tạo token
+    const token = jwt.sign(
+      {
+        id: teacher._id,
+        email: teacher.email,
+        name: teacher.name,
+        role: 'teacher',
+        teacherCode: teacher.teacherCode,
+        faculty: teacher.faculty,
+        major: teacher.major,
+        degree: teacher.degree,
+        position: teacher.position
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // TRẢ VỀ ĐẦY ĐỦ THÔNG TIN GIẢNG VIÊN
+    res.json({
+      success: true,
+      message: 'Đăng nhập thành công',
+      token,
+      user: {
+        id: teacher._id,
+        _id: teacher._id,  // THÊM _id để tương thích
+        name: teacher.name,
+        email: teacher.email,
+        role: 'teacher',
+        teacherCode: teacher.teacherCode,
+        faculty: teacher.faculty,
+        major: teacher.major,
+        degree: teacher.degree,
+        position: teacher.position,
+        phone: teacher.phone,
+        avatar: teacher.avatar,
+        startDate: teacher.startDate,
+        isLocked: teacher.isLocked
+      }
+    });
+
+  } catch (error) {
+    console.error('Teacher login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server, vui lòng thử lại sau'
+    });
+  }
+});
+
+// ============= LẤY THÔNG TIN GIẢNG VIÊN HIỆN TẠI =============
+router.get("/teacher/me", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Không tìm thấy token'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Không phải tài khoản giảng viên'
+      });
+    }
+
+    const teacher = await Teacher.findById(decoded.id);
+    
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy giảng viên'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: teacher._id,
+        email: teacher.email,
+        name: teacher.name,
+        role: 'teacher',
+        teacherCode: teacher.teacherCode,
+        faculty: teacher.faculty,
+        major: teacher.major,
+        degree: teacher.degree,
+        position: teacher.position,
+        phone: teacher.phone,
+        startDate: teacher.startDate,
+        avatar: teacher.avatar,
+        isLocked: teacher.isLocked
+      }
+    });
+
+  } catch (error) {
+    console.error('Get teacher info error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// ============= CẬP NHẬT THÔNG TIN GIẢNG VIÊN =============
+router.put("/teacher/profile", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Không tìm thấy token'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Không phải tài khoản giảng viên'
+      });
+    }
+
+    const { phone, avatar, name } = req.body;
+    
+    const updateData = {};
+    if (phone) updateData.phone = phone;
+    if (avatar) updateData.avatar = avatar;
+    if (name) updateData.name = name;
+
+    const teacher = await Teacher.findByIdAndUpdate(
+      decoded.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy giảng viên'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Cập nhật thông tin thành công',
+      user: {
+        id: teacher._id,
+        email: teacher.email,
+        name: teacher.name,
+        role: 'teacher',
+        teacherCode: teacher.teacherCode,
+        faculty: teacher.faculty,
+        major: teacher.major,
+        degree: teacher.degree,
+        position: teacher.position,
+        phone: teacher.phone,
+        avatar: teacher.avatar
+      }
+    });
+
+  } catch (error) {
+    console.error('Update teacher profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// ============= ĐỔI MẬT KHẨU CHO GIẢNG VIÊN =============
+router.post("/teacher/change-password", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Không tìm thấy token'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Không phải tài khoản giảng viên'
+      });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu mới phải có ít nhất 6 ký tự'
+      });
+    }
+
+    const teacher = await Teacher.findById(decoded.id);
+    
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy giảng viên'
+      });
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    let isValid = false;
+    if (teacher.password) {
+      if (teacher.password.startsWith('$2a$') || teacher.password.startsWith('$2b$')) {
+        isValid = await bcrypt.compare(currentPassword, teacher.password);
+      } else {
+        isValid = (teacher.password === currentPassword);
+      }
+    }
+
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mật khẩu hiện tại không chính xác'
+      });
+    }
+
+    // Mã hóa mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    teacher.password = await bcrypt.hash(newPassword, salt);
+    await teacher.save();
+
+    res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công'
+    });
+
+  } catch (error) {
+    console.error('Teacher change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server'
     });
   }
 });

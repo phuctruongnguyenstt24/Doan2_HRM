@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaUser,
   FaCalendarAlt,
@@ -34,51 +34,45 @@ const UserManagement = () => {
     totalPages: 1
   });
 
-  // Sử dụng API_URL từ env
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const fetchAPI = async (endpoint, options = {}) => {
-  try {
-    // Đảm bảo endpoint bắt đầu bằng /
-    let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    
-    let url;
-    // Nếu đang trong development và API_URL là ngrok domain
-    if (import.meta.env.DEV && API_URL.includes('ngrok-free.dev')) {
-      // Dùng proxy - thêm /api vào đầu
-      url = `/api${cleanEndpoint}`;
-      console.log('🔄 Dev mode with ngrok - using proxy:', url);
-    } else {
-      // Production hoặc local development
-      // API_URL đã có /api ở cuối, không thêm nữa
-      url = `${API_URL}${cleanEndpoint}`;
-      console.log('🚀 Using full URL:', url);
+  const fetchAPI = async (endpoint, options = {}) => {
+    try {
+      let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      
+      let url;
+      if (import.meta.env.DEV && API_URL.includes('ngrok-free.dev')) {
+        url = `/api${cleanEndpoint}`;
+        console.log('🔄 Dev mode with ngrok - using proxy:', url);
+      } else {
+        url = `${API_URL}${cleanEndpoint}`;
+        console.log('🚀 Using full URL:', url);
+      }
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...options.headers
+        },
+        credentials: 'include'
+      });
+
+      return response;
+    } catch (error) {
+      console.error('❌ API fetch error:', error);
+      throw error;
     }
+  };
 
-    const token = localStorage.getItem('token');
-
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers
-      },
-      credentials: 'include'
-    });
-
-    return response;
-  } catch (error) {
-    console.error('❌ API fetch error:', error);
-    throw error;
-  }
-};
-
-  // Fetch users
-  const fetchUsers = async (page = 1) => {
+  // Fetch users - wrap với useCallback
+  const fetchUsers = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
       if (!token) {
         console.error('No token found');
@@ -86,65 +80,33 @@ const fetchAPI = async (endpoint, options = {}) => {
         return;
       }
 
-      const response = await fetchAPI(`/users-permissions/users?page=${page}&limit=10&search=${searchTerm}`);
+      const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+      const response = await fetchAPI(`/users-permissions/users?page=${page}&limit=10${searchQuery}`);
 
       if (response.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         window.location.href = '/login';
         return;
       }
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users);
-        setPagination(data.pagination);
+        setUsers(data.users || []);
+        setPagination(data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 });
       }
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm]);
 
-  // Chặn địa chỉ IP
-  const blockIP = async (ipAddress) => {
-    if (window.confirm(`Block IP address: ${ipAddress}?`)) {
-      try {
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-          alert('Please login first');
-          return;
-        }
-
-        const response = await fetchAPI('/security/block-ip', {
-          method: 'POST',
-          body: JSON.stringify({ ip: ipAddress })
-        });
-
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-          return;
-        }
-
-        if (response.ok) {
-          alert('IP address blocked successfully');
-        } else {
-          alert('Failed to block IP');
-        }
-      } catch (error) {
-        console.error('Error blocking IP:', error);
-        alert('Failed to block IP');
-      }
-    }
-  };
-
-  // Fetch access logs
-  const fetchAccessLogs = async (page = 1) => {
+  // Fetch access logs - wrap với useCallback
+  const fetchAccessLogs = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
       if (!token) {
         console.error('No token found');
@@ -156,44 +118,35 @@ const fetchAPI = async (endpoint, options = {}) => {
 
       if (response.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         window.location.href = '/login';
         return;
       }
 
       if (response.ok) {
         const data = await response.json();
-
-        // Debug: In ra console để xem cấu trúc
         console.log('📊 Access Logs API Response:', data);
-        console.log('📝 Logs array:', data.logs);
-        console.log('🔍 First log userId:', data.logs?.[0]?.userId);
-
-        // Kiểm tra xem userId có được populate không
-        if (data.logs && data.logs.length > 0) {
-          console.log('✅ User name from populate:', data.logs[0].userId?.name);
-          console.log('✅ User email from populate:', data.logs[0].userId?.email);
-        }
-
         setAccessLogs(data.logs || []);
-        setPagination(data.pagination);
+        setPagination(data.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 });
       }
     } catch (error) {
       console.error('Error fetching access logs:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.from, dateRange.to]);
 
   // Fetch dashboard stats
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) return;
 
       const response = await fetchAPI('/users-permissions/dashboard/stats');
 
       if (response.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         window.location.href = '/login';
         return;
       }
@@ -205,27 +158,50 @@ const fetchAPI = async (endpoint, options = {}) => {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
-
-  useEffect(() => {
-    fetchDashboardStats();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'users') {
-      fetchUsers();
-    } else if (activeTab === 'logs') {
-      fetchAccessLogs();
+  // Chặn địa chỉ IP
+  const blockIP = async (ipAddress) => {
+    if (window.confirm(`Chặn địa chỉ IP: ${ipAddress}?`)) {
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+        if (!token) {
+          alert('Vui lòng đăng nhập lại');
+          return;
+        }
+
+        const response = await fetchAPI('/security/block-ip', {
+          method: 'POST',
+          body: JSON.stringify({ ip: ipAddress })
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          window.location.href = '/login';
+          return;
+        }
+
+        if (response.ok) {
+          alert('Đã chặn IP thành công');
+        } else {
+          alert('Chặn IP thất bại');
+        }
+      } catch (error) {
+        console.error('Error blocking IP:', error);
+        alert('Chặn IP thất bại');
+      }
     }
-  }, [activeTab, dateRange]);
+  };
 
   // Xem chi tiết user
   const viewUserDetails = async (userId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
       if (!token) {
-        alert('Please login first');
+        alert('Vui lòng đăng nhập lại');
         return;
       }
 
@@ -233,22 +209,20 @@ const fetchAPI = async (endpoint, options = {}) => {
 
       if (response.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         window.location.href = '/login';
         return;
       }
 
       if (response.ok) {
         const data = await response.json();
-
-        // Sửa: API trả về { success, data: { user, accessLogs, stats } }
         if (data.success && data.data) {
           setSelectedUser({
             user: data.data.user,
-            accessLogs: data.data.accessLogs,
+            accessLogs: data.data.accessLogs || [],
             logsCount: data.data.stats?.totalLogs || 0
           });
         } else {
-          // Fallback cho cấu trúc cũ
           setSelectedUser(data);
         }
       }
@@ -260,10 +234,10 @@ const fetchAPI = async (endpoint, options = {}) => {
   // Cập nhật user status
   const updateUserStatus = async (userId, isActive) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
       if (!token) {
-        alert('Please login first');
+        alert('Vui lòng đăng nhập lại');
         return;
       }
 
@@ -274,17 +248,18 @@ const fetchAPI = async (endpoint, options = {}) => {
 
       if (response.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         window.location.href = '/login';
         return;
       }
 
       if (response.ok) {
         fetchUsers(pagination.page);
-        alert('User status updated successfully');
+        alert('Cập nhật trạng thái thành công');
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      alert('Failed to update user status');
+      alert('Cập nhật trạng thái thất bại');
     }
   };
 
@@ -300,16 +275,17 @@ const fetchAPI = async (endpoint, options = {}) => {
         log.action,
         log.ipAddress,
         log.status,
-        `"${log.details || ''}"`
+        `"${(log.details || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `access-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   // Handle search
@@ -321,18 +297,48 @@ const fetchAPI = async (endpoint, options = {}) => {
     }
   };
 
+  // Handle refresh
+  const handleRefresh = () => {
+    if (activeTab === 'users') {
+      fetchUsers(pagination.page);
+    } else {
+      fetchAccessLogs(pagination.page);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  // Load data when tab or filters change
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers(1);
+    } else if (activeTab === 'logs') {
+      fetchAccessLogs(1);
+    }
+  }, [activeTab, fetchUsers, fetchAccessLogs]);
+
+  // Reset page when search term changes (for users)
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers(1);
+    }
+  }, [searchTerm, activeTab, fetchUsers]);
+
   return (
     <div className="user-management-container">
       {/* Header */}
       <div className="dashboard-header-UM">
-        <h1><FaUser className="header-icon-UM" /> User Management</h1>
+        <h1><FaUser className="header-icon-UM" /> Quản lý người dùng</h1>
         <div className="header-actions-UM">
-          <button className="btn-refresh" onClick={() => activeTab === 'users' ? fetchUsers() : fetchAccessLogs()}>
-            <FaSync /> Refresh
+          <button className="btn-refresh" onClick={handleRefresh}>
+            <FaSync /> Làm mới
           </button>
           {activeTab === 'logs' && (
             <button className="btn-export" onClick={exportLogsToCSV}>
-              <FaDownload /> Export CSV
+              <FaDownload /> Xuất CSV
             </button>
           )}
         </div>
@@ -347,7 +353,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </div>
             <div className="stat-info-UM">
               <h3>{stats.userStats?.total || 0}</h3>
-              <p>Total Users</p>
+              <p>Tổng người dùng</p>
             </div>
           </div>
           <div className="stat-card-UM">
@@ -356,7 +362,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </div>
             <div className="stat-info-UM">
               <h3>{stats.userStats?.active || 0}</h3>
-              <p>Active Users</p>
+              <p>Đang hoạt động</p>
             </div>
           </div>
           <div className="stat-card-UM">
@@ -365,7 +371,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </div>
             <div className="stat-info-UM">
               <h3>{stats.userStats?.admins || 0}</h3>
-              <p>Admins</p>
+              <p>Quản trị viên</p>
             </div>
           </div>
           <div className="stat-card-UM">
@@ -374,7 +380,7 @@ const fetchAPI = async (endpoint, options = {}) => {
             </div>
             <div className="stat-info-UM">
               <h3>{accessLogs.length}</h3>
-              <p>Recent Activities</p>
+              <p>Hoạt động gần đây</p>
             </div>
           </div>
         </div>
@@ -386,13 +392,13 @@ const fetchAPI = async (endpoint, options = {}) => {
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
-          <FaUsers /> Users
+          <FaUsers /> Người dùng
         </button>
         <button
           className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
           onClick={() => setActiveTab('logs')}
         >
-          <FaHistory /> Access Logs
+          <FaHistory /> Lịch sử truy cập
         </button>
       </div>
 
@@ -402,12 +408,11 @@ const fetchAPI = async (endpoint, options = {}) => {
           <FaSearch className="search-icon-UM" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Tìm kiếm theo tên hoặc email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
           />
-
         </div>
 
         {activeTab === 'logs' && (
@@ -418,7 +423,7 @@ const fetchAPI = async (endpoint, options = {}) => {
               value={dateRange.from}
               onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
             />
-            <span>to</span>
+            <span>đến</span>
             <input
               type="date"
               value={dateRange.to}
@@ -432,83 +437,93 @@ const fetchAPI = async (endpoint, options = {}) => {
       {activeTab === 'users' && (
         <div className="users-table-container">
           {loading ? (
-            <div className="loading">Loading users...</div>
+            <div className="loading">Đang tải người dùng...</div>
           ) : (
             <>
               <table className="users-table-UM">
                 <thead>
                   <tr>
-                    <th>User</th>
+                    <th>Người dùng</th>
                     <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Last Login</th>
-                    <th>Actions</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Đăng nhập cuối</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(user => (
-                    <tr key={user._id}>
-                      <td className="user-info-UM">
-                        <div className="user-avatar-UM">
-                          {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                        </div>
-                        <div className="user-details-UM">
-                          <strong>{user.name || 'No Name'}</strong>
-                          <small>Joined: {new Date(user.createdAt).toLocaleDateString()}</small>
-                        </div>
-                      </td>
-                      <td>{user.email}</td>
-                      <td>
-                        <span className={`role-badge role-${user.role}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge-UM ${user.isActive ? 'active' : 'inactive'}`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td>
-                        {user.lastLogin ?
-                          new Date(user.lastLogin).toLocaleString() :
-                          'Never'}
-                      </td>
-                      <td className="action-buttons-UM">
-                        <button
-                          className="btn-view"
-                          onClick={() => viewUserDetails(user._id)}
-                        >
-                          <FaEye /> View
-                        </button>
-                        <button
-                          className={`btn-toggle ${user.isActive ? 'deactivate' : 'activate'}`}
-                          onClick={() => updateUserStatus(user._id, !user.isActive)}
-                        >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </td>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center' }}>Không có dữ liệu</td>
                     </tr>
-                  ))}
+                  ) : (
+                    users.map(user => (
+                      <tr key={user._id}>
+                        <td className="user-info-UM">
+                          <div className="user-avatar-UM">
+                            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                          <div className="user-details-UM">
+                            <strong>{user.name || 'Chưa có tên'}</strong>
+                            <small>Tham gia: {new Date(user.createdAt).toLocaleDateString('vi-VN')}</small>
+                          </div>
+                        </td>
+                        <td>{user.email}</td>
+                        <td>
+                          <span className={`role-badge role-${user.role}`}>
+                            {user.role === 'admin' ? 'Quản trị viên' : user.role === 'teacher' ? 'Giảng viên' : 'Nhân viên'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-badge-UM ${user.isActive ? 'active' : 'inactive'}`}>
+                            {user.isActive ? 'Hoạt động' : 'Khóa'}
+                          </span>
+                        </td>
+                        <td>
+                          {user.lastLogin ?
+                            new Date(user.lastLogin).toLocaleString('vi-VN') :
+                            'Chưa đăng nhập'}
+                        </td>
+                        <td className="action-buttons-UM">
+                          <button
+                            className="btn-view"
+                            onClick={() => viewUserDetails(user._id)}
+                            title="Xem chi tiết"
+                          >
+                            <FaEye /> Xem
+                          </button>
+                          <button
+                            className={`btn-toggle ${user.isActive ? 'deactivate' : 'activate'}`}
+                            onClick={() => updateUserStatus(user._id, !user.isActive)}
+                            title={user.isActive ? 'Khóa tài khoản' : 'Mở khóa'}
+                          >
+                            {user.isActive ? 'Khóa' : 'Mở khóa'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
 
               {/* Pagination */}
-              <div className="pagination-UM">
-                <button
-                  disabled={pagination.page === 1}
-                  onClick={() => fetchUsers(pagination.page - 1)}
-                >
-                  Previous
-                </button>
-                <span>Page {pagination.page} of {pagination.totalPages}</span>
-                <button
-                  disabled={pagination.page === pagination.totalPages}
-                  onClick={() => fetchUsers(pagination.page + 1)}
-                >
-                  Next
-                </button>
-              </div>
+              {pagination.totalPages > 1 && (
+                <div className="pagination-UM">
+                  <button
+                    disabled={pagination.page === 1}
+                    onClick={() => fetchUsers(pagination.page - 1)}
+                  >
+                    Trước
+                  </button>
+                  <span>Trang {pagination.page} / {pagination.totalPages}</span>
+                  <button
+                    disabled={pagination.page === pagination.totalPages}
+                    onClick={() => fetchUsers(pagination.page + 1)}
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -518,85 +533,97 @@ const fetchAPI = async (endpoint, options = {}) => {
       {activeTab === 'logs' && (
         <div className="logs-container-UM">
           {loading ? (
-            <div className="loading">Loading access logs...</div>
+            <div className="loading">Đang tải lịch sử truy cập...</div>
           ) : (
             <>
               <div className="logs-table-container-UM">
                 <table className="logs-table-UM">
                   <thead>
                     <tr>
-                      <th>Timestamp</th>
-                      <th>User</th>
-                      <th>Action</th>
+                      <th>Thời gian</th>
+                      <th>Người dùng</th>
+                      <th>Hành động</th>
                       <th>IP Address</th>
-                      <th>Device/Browser</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th>Thiết bị/Trình duyệt</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {accessLogs.map(log => (
-                      <tr key={log._id} className={`log-row log-${log.status}`}>
-                        <td>
-                          <div className="timestamp">
-                            {new Date(log.timestamp).toLocaleDateString()}
-                            <small>{new Date(log.timestamp).toLocaleTimeString()}</small>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="log-user-UM">
-                            <strong>{log.userId?.name || 'Unknown'}</strong>
-                            <small>{log.userId?.email || 'No email'}</small>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`action-badge-UM action-${log.action}`}>
-                            {log.action}
-                          </span>
-                        </td>
-                        <td>{log.ipAddress}</td>
-                        <td>
-                          <div className="user-agent-UM">
-                            {log.userAgent ?
-                              log.userAgent.substring(0, 50) + (log.userAgent.length > 50 ? '...' : '') :
-                              'Unknown'}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`status-badge-UM ${log.status}`}>
-                            {log.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn-block-ip-UM"
-                            onClick={() => blockIP(log.ipAddress)}
-                          >
-                            <FaBan /> Block IP
-                          </button>
-                        </td>
+                    {accessLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td>
                       </tr>
-                    ))}
+                    ) : (
+                      accessLogs.map(log => (
+                        <tr key={log._id} className={`log-row log-${log.status}`}>
+                          <td>
+                            <div className="timestamp">
+                              {new Date(log.timestamp).toLocaleDateString('vi-VN')}
+                              <small>{new Date(log.timestamp).toLocaleTimeString('vi-VN')}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="log-user-UM">
+                              <strong>{log.userId?.name || 'Không xác định'}</strong>
+                              <small>{log.userId?.email || ''}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`action-badge-UM action-${log.action}`}>
+                              {log.action === 'login' ? 'Đăng nhập' : 
+                               log.action === 'logout' ? 'Đăng xuất' : 
+                               log.action === 'failed' ? 'Thất bại' : log.action}
+                            </span>
+                          </td>
+                          <td>{log.ipAddress}</td>
+                          <td>
+                            <div className="user-agent-UM" title={log.userAgent}>
+                              {log.userAgent ?
+                                log.userAgent.substring(0, 50) + (log.userAgent.length > 50 ? '...' : '') :
+                                'Không xác định'}
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`status-badge-UM ${log.status}`}>
+                              {log.status === 'success' ? 'Thành công' : 
+                               log.status === 'failed' ? 'Thất bại' : log.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="btn-block-ip-UM"
+                              onClick={() => blockIP(log.ipAddress)}
+                              title="Chặn IP này"
+                            >
+                              <FaBan /> Chặn IP
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
 
               {/* Pagination */}
-              <div className="pagination-UM">
-                <button
-                  disabled={pagination.page === 1}
-                  onClick={() => fetchAccessLogs(pagination.page - 1)}
-                >
-                  Previous
-                </button>
-                <span>Page {pagination.page} of {pagination.totalPages}</span>
-                <button
-                  disabled={pagination.page === pagination.totalPages}
-                  onClick={() => fetchAccessLogs(pagination.page + 1)}
-                >
-                  Next
-                </button>
-              </div>
+              {pagination.totalPages > 1 && (
+                <div className="pagination-UM">
+                  <button
+                    disabled={pagination.page === 1}
+                    onClick={() => fetchAccessLogs(pagination.page - 1)}
+                  >
+                    Trước
+                  </button>
+                  <span>Trang {pagination.page} / {pagination.totalPages}</span>
+                  <button
+                    disabled={pagination.page === pagination.totalPages}
+                    onClick={() => fetchAccessLogs(pagination.page + 1)}
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -607,62 +634,71 @@ const fetchAPI = async (endpoint, options = {}) => {
         <div className="modal-overlay-UM" onClick={() => setSelectedUser(null)}>
           <div className="modal-content-UM" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-UM">
-              <h2>User Details</h2>
+              <h2>Chi tiết người dùng</h2>
               <button className="close-modal-UM" onClick={() => setSelectedUser(null)}>×</button>
             </div>
 
             <div className="user-detail-view">
               <div className="user-basic-info">
                 <div className="detail-avatar">
-                  {selectedUser.user.name ? selectedUser.user.name.charAt(0).toUpperCase() : 'U'}
+                  {selectedUser.user?.name ? selectedUser.user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="detail-main">
-                  <h3>{selectedUser.user.name || 'No Name'}</h3>
-                  <p>{selectedUser.user.email}</p>
+                  <h3>{selectedUser.user?.name || 'Chưa có tên'}</h3>
+                  <p>{selectedUser.user?.email}</p>
                   <div className="detail-tags">
-                    <span className={`role-tag role-${selectedUser.user.role}`}>
-                      {selectedUser.user.role}
+                    <span className={`role-tag role-${selectedUser.user?.role}`}>
+                      {selectedUser.user?.role === 'admin' ? 'Quản trị viên' : 
+                       selectedUser.user?.role === 'teacher' ? 'Giảng viên' : 'Nhân viên'}
                     </span>
-                    <span className={`status-tag ${selectedUser.user.isActive ? 'active' : 'inactive'}`}>
-                      {selectedUser.user.isActive ? 'Active' : 'Inactive'}
+                    <span className={`status-tag ${selectedUser.user?.isActive ? 'active' : 'inactive'}`}>
+                      {selectedUser.user?.isActive ? 'Hoạt động' : 'Khóa'}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="user-activity-section">
-                <h3><FaHistory /> Recent Activity ({selectedUser.logsCount} logs)</h3>
+                <h3><FaHistory /> Hoạt động gần đây ({selectedUser.logsCount} lượt)</h3>
                 <div className="activity-list">
-                  {selectedUser.accessLogs?.slice(0, 5).map(log => (
-                    <div key={log._id} className="activity-item">
-                      <div className="activity-time">
-                        {new Date(log.timestamp).toLocaleString()}
+                  {selectedUser.accessLogs?.length === 0 ? (
+                    <p>Chưa có hoạt động nào</p>
+                  ) : (
+                    selectedUser.accessLogs?.slice(0, 5).map(log => (
+                      <div key={log._id} className="activity-item">
+                        <div className="activity-time">
+                          {new Date(log.timestamp).toLocaleString('vi-VN')}
+                        </div>
+                        <div className="activity-action">
+                          <span className={`action-tag action-${log.action}`}>
+                            {log.action === 'login' ? 'Đăng nhập' : 
+                             log.action === 'logout' ? 'Đăng xuất' : 
+                             log.action === 'failed' ? 'Thất bại' : log.action}
+                          </span>
+                          <small>{log.ipAddress}</small>
+                        </div>
+                        <div className="activity-status">
+                          <span className={`status-dot ${log.status}`}></span>
+                        </div>
                       </div>
-                      <div className="activity-action">
-                        <span className={`action-tag action-${log.action}`}>
-                          {log.action}
-                        </span>
-                        <small>{log.ipAddress}</small>
-                      </div>
-                      <div className="activity-status">
-                        <span className={`status-dot ${log.status}`}></span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
               <div className="modal-actions-UM">
                 <button className="btn-secondary-UM" onClick={() => setSelectedUser(null)}>
-                  Close
+                  Đóng
                 </button>
                 <button
                   className="btn-primary-UM"
                   onClick={() => {
-                    console.log('View all activity for user:', selectedUser.user._id);
+                    // Chuyển sang tab logs và filter theo user
+                    setActiveTab('logs');
+                    setSelectedUser(null);
                   }}
                 >
-                  View Full Activity
+                  Xem tất cả hoạt động
                 </button>
               </div>
             </div>

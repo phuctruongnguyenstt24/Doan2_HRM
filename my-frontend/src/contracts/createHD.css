@@ -3,21 +3,21 @@
     margin: 40px auto;
     padding: 0 20px;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #f9fafb;
+    background-color: var()  #f9fafb;
 }
 
 .form-title {
     font-size: 24px;
     font-weight: 700;
-    color: #111827;
+    color: var() #111827;
     margin-bottom: 24px;
 }
 
 .contract-form {
-    background: #ffffff;
+    background: var() #ffffff;
     padding: 32px;
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: var() 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid #e5e7eb;
 }
 
@@ -44,34 +44,35 @@
 .form-label-cr {
     font-size: 14px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-color, #f3f4f6) ;
     margin-bottom: 6px;
 }
 
 .required {
-    color: #ef4444;
+    color: var() #ef4444;
 }
 
 .form-input, .form-select, .form-textarea {
     padding: 10px 14px;
-    border: 1px solid #d1d5db;
+    border: var() 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 14px;
     transition: all 0.2s ease;
     outline: none;
+    color: black ;
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: var()  #2563eb;
+    box-shadow: var() 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .input-error {
-    border-color: #ef4444 !important;
+    border-color: var() #ef4444 !important;
 }
 
 .error-text {
-    color: #ef4444;
+    color: var() #ef4444;
     font-size: 12px;
     margin-top: 4px;
 }
@@ -96,8 +97,8 @@
 
 /* Focus */
 .form-input-CHD:focus {
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74,144,226,0.15);
+  border-color: var() #4a90e2;
+  box-shadow: var() 0 0 0 2px rgba(74,144,226,0.15);
 }
 
 /* Icon VNĐ */
@@ -107,7 +108,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 13px;
-  color: #666;
+  color: var() #666;
   pointer-events: none;
 }
 
@@ -126,7 +127,7 @@
 }
 
 .file-input-wrapper {
-    background: #f9fafb;
+    background: var()  #f9fafb;
     padding: 10px;
     border: 2px dashed #e5e7eb;
     border-radius: 8px;

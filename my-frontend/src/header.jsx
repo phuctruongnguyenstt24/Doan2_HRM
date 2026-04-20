@@ -1,82 +1,78 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   FaSearch, 
-  FaBell, 
   FaUserCircle, 
   FaCog,
   FaMoon,
   FaSun,
-  FaQuestionCircle,
-  FaEnvelope,
   FaCalendarAlt,
   FaClock
 } from 'react-icons/fa';
 import { FiLogOut } from 'react-icons/fi';
+import SearchModal from './components/SearchModal';
+import NotificationCenter from './components/NotificationCenter'; // Import Notification Center mới
 import { useTheme } from './ThemeContext';
 import './header.css';
 
-const Header = ({ pageTitle = "Trang chủ" }) => {
-   const { settings, updateSettings } = useTheme(); // Sử dụng theme context
+const Header = ({ onMenuToggle, onSidebarToggle, sidebarCollapsed, pageTitle = "Trang chủ" })  => {
+  const { settings, updateSettings } = useTheme();
+  const navigate = useNavigate();
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Thêm shortcut Ctrl+K để mở tìm kiếm
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Lấy thông tin user từ localStorage
-
-const getUserInfo = () => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user && user.avatar) {
-      return user;
-    }
-    
-    // Nếu không có user trong localStorage, thử lấy từ URL (Google login)
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    
-    if (token) {
-      // Decode token để lấy avatar
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const decodedToken = JSON.parse(window.atob(base64));
-        
-        if (decodedToken.avatar) {
-          // Lưu vào localStorage
-          localStorage.setItem('user', JSON.stringify(decodedToken));
-          return decodedToken;
-        }
-      } catch (e) {
-        console.error('Error decoding token:', e);
+  const getUserInfo = () => {
+    try {
+      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user;
       }
+      
+      return {
+        name: 'Admin User',
+        email: 'admin@company.com',
+        avatar: null,
+        role: 'admin'
+      };
+    } catch (error) {
+      console.error('Error getting user info:', error);
+      return {
+        name: 'Admin User',
+        email: 'admin@company.com',
+        avatar: null,
+        role: 'admin'
+      };
     }
-    
-    // Fallback
-    return {
-      name: 'Admin User',
-      email: 'admin@company.com',
-      avatar: null,
-      role: 'Quản trị viên'
-    };
-  } catch (error) {
-    console.error('Error getting user info:', error);
-    return {
-      name: 'Admin User',
-      email: 'admin@company.com',
-      avatar: null,
-      role: 'Quản trị viên'
-    };
-  }
-};
+  };
 
-const userInfo = getUserInfo();
+  const userInfo = getUserInfo();
 
+  const getRoleDisplay = (role) => {
+    switch (role) {
+      case 'admin': return 'Quản trị viên';
+      case 'employee': return 'Nhân viên';
+      case 'teacher': return 'Giảng viên';
+      default: return role || 'Thành viên';
+    }
+  };
 
-  // Format date
   const formatDate = (date) => {
     const options = { 
       weekday: 'long', 
@@ -87,7 +83,6 @@ const userInfo = getUserInfo();
     return date.toLocaleDateString('vi-VN', options);
   };
 
-  // Format time
   const formatTime = (date) => {
     return date.toLocaleTimeString('vi-VN', { 
       hour: '2-digit', 
@@ -96,295 +91,169 @@ const userInfo = getUserInfo();
     });
   };
 
-  // Cập nhật thời gian mỗi giây
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
-  }, []);
-
-  // Mock notifications data
-  useEffect(() => {
-    const mockNotifications = [
-      {
-        id: 1,
-        title: 'Hợp đồng sắp hết hạn',
-        message: '3 hợp đồng sẽ hết hạn trong 7 ngày tới',
-        time: '10 phút trước',
-        read: false,
-        type: 'warning'
-      },
-      {
-        id: 2,
-        title: 'Nhân viên mới',
-        message: 'Nguyễn Văn A vừa được thêm vào hệ thống',
-        time: '2 giờ trước',
-        read: false,
-        type: 'info'
-      },
-      {
-        id: 3,
-        title: 'Yêu cầu phê duyệt',
-        message: '5 yêu cầu nghỉ phép cần phê duyệt',
-        time: '5 giờ trước',
-        read: true,
-        type: 'success'
-      },
-      {
-        id: 4,
-        title: 'Báo cáo tháng',
-        message: 'Báo cáo nhân sự tháng 12 đã sẵn sàng',
-        time: '1 ngày trước',
-        read: true,
-        type: 'info'
-      },
-      {
-        id: 5,
-        title: 'Cập nhật hệ thống',
-        message: 'Phiên bản 2.1.0 đã được cập nhật',
-        time: '2 ngày trước',
-        read: true,
-        type: 'success'
-      }
-    ];
-    setNotifications(mockNotifications);
-    
-    // Tính số thông báo chưa đọc
-    const unreadCount = mockNotifications.filter(n => !n.read).length;
-    setUnreadNotifications(unreadCount);
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
-      // Thực hiện tìm kiếm
+      setIsSearchOpen(true);
       setSearchQuery('');
     }
   };
 
-  const handleNotificationClick = (id) => {
-    // Đánh dấu đã đọc
-    const updatedNotifications = notifications.map(notification =>
-      notification.id === id ? { ...notification, read: true } : notification
-    );
-    setNotifications(updatedNotifications);
-    
-    // Cập nhật số thông báo chưa đọc
-    const unreadCount = updatedNotifications.filter(n => !n.read).length;
-    setUnreadNotifications(unreadCount);
-    
-    // Navigate to notification detail (implement later)
-    console.log('Notification clicked:', id);
-  };
-
   const handleLogout = () => {
-    // Xóa thông tin user
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    // Redirect to login page
-    window.location.href = '/login';
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    navigate('/login');
   };
 
   const toggleDarkMode = () => {
     updateSettings({ ...settings, darkMode: !settings.darkMode });
   };
 
-  const markAllAsRead = () => {
-    const updatedNotifications = notifications.map(notification => ({
-      ...notification,
-      read: true
-    }));
-    setNotifications(updatedNotifications);
-    setUnreadNotifications(0);
-  };
-
-    // Style inline để áp dụng màu sắc từ settings
   const headerStyle = {
-    backgroundColor: settings.headerColor,
+    backgroundColor: settings.headerColor || '#ffffff',
     color: settings.darkMode ? '#f3f4f6' : '#1f2937',
   };
 
   return (
-    <header className="header-dashboard" style={headerStyle}>
-      <div className="header-left">
-        <div className="page-title">
-          <h1>{pageTitle}</h1>
-          <div className="date-time">
-            <div className="date">
-              <FaCalendarAlt className="date-icon" />
-              <span>{formatDate(currentTime)}</span>
-            </div>
-            <div className="time">
-              <FaClock className="time-icon" />
-              <span>{formatTime(currentTime)}</span>
+    <>
+      <header className="header-dashboard-HE" style={headerStyle}>
+        <div className="header-left-HE">
+          <div className="page-title">
+            <h1>{pageTitle}</h1>
+            <div className="date-time">
+              <div className="date">
+                <FaCalendarAlt className="date-icon" />
+                <span>{formatDate(currentTime)}</span>
+              </div>
+              <div className="time">
+                <FaClock className="time-icon" />
+                <span>{formatTime(currentTime)}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="header-right-phuc">
-        {/* Search Bar */}
-        <div className="search-container-header">
-          <form onSubmit={handleSearch} className="search-form-header">
-            <input
-              type="text"
-              placeholder="Tìm kiếm nhân viên, hợp đồng, báo cáo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input-header"
-            />
-            <button type="submit" className="search-button-header">
-              <FaSearch />
+        <div className="header-right-phuc">
+          {/* Search Bar */}
+          <div className="search-container-header">
+            <form onSubmit={handleSearch} className="search-form-header">
+              <input
+                type="text"
+                placeholder="Tìm kiếm nhân viên, giảng viên, hợp đồng... (Ctrl+K)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchOpen(true)}
+                className="search-input-header"
+              />
+              <button type="submit" className="search-button-header">
+                <FaSearch />
+              </button>
+            </form>
+          </div>
+
+          {/* Dark Mode Toggle */}
+          <button 
+            className="icon-button-header theme-toggle" 
+            onClick={toggleDarkMode} 
+            title={settings.darkMode ? "Chế độ sáng" : "Chế độ tối"}
+          >
+            {settings.darkMode ? <FaSun /> : <FaMoon />}
+          </button>
+
+          {/* Notification Center - Real-time notifications */}
+          <NotificationCenter />
+
+          {/* User Profile */}
+          <div className="user-profile-container-admin">
+            <button 
+              className="user-profile-button-admin"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+            >
+              {userInfo.avatar ? (
+                <img src={userInfo.avatar} alt={userInfo.name} className="user-avatar" />
+              ) : (
+                <div className="avatar-placeholder">
+                  {userInfo.name?.charAt(0) || 'U'}
+                </div>
+              )}
+              <div className="user-info-admin">
+                <span className="user-name-admin">{userInfo.name || 'User'}</span>
+                <span className="user-role-admin">{getRoleDisplay(userInfo.role)}</span>
+              </div>
+              <span className="dropdown-arrow">▾</span>
             </button>
-          </form>
-        </div>
 
-        {/* Dark Mode Toggle */}
-      <button className="icon-button-header theme-toggle" onClick={toggleDarkMode} title="Chế độ tối">
-          {settings.darkMode ? <FaSun /> : <FaMoon />}
-        </button>
-
-       
-
-     
-
-        {/* Notifications */}
-        <div className="notifications-container">
-          <button 
-            className="icon-button-header notifications-button"
-            onClick={() => setShowNotifications(!showNotifications)}
-            title="Thông báo"
-          >
-            <FaBell />
-            {unreadNotifications > 0 && (
-              <span className="badge">{unreadNotifications}</span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div className="notifications-dropdown">
-              <div className="notifications-header">
-                <h3>Thông báo ({notifications.length})</h3>
-                {unreadNotifications > 0 && (
-                  <button 
-                    className="mark-all-read"
-                    onClick={markAllAsRead}
-                  >
-                    Đánh dấu tất cả đã đọc
-                  </button>
-                )}
-              </div>
-              <div className="notifications-list">
-                {notifications.map(notification => (
-                  <div 
-                    key={notification.id}
-                    className={`notification-item ${!notification.read ? 'unread' : ''} ${notification.type}`}
-                    onClick={() => handleNotificationClick(notification.id)}
-                  >
-                    <div className="notification-content">
-                      <h4>{notification.title}</h4>
-                      <p>{notification.message}</p>
-                      <span className="notification-time">{notification.time}</span>
+            {showUserMenu && (
+              <div className="user-menu-dropdown">
+                <div className="user-menu-header">
+                  {userInfo.avatar ? (
+                    <img src={userInfo.avatar} alt={userInfo.name} className="menu-avatar" />
+                  ) : (
+                    <div className="menu-avatar-placeholder">
+                      {userInfo.name?.charAt(0) || 'U'}
                     </div>
-                    {!notification.read && (
-                      <div className="unread-dot"></div>
+                  )}
+                  <div className="menu-user-info">
+                    <h4>{userInfo.name || 'User'}</h4>
+                    <p>{userInfo.email || 'user@company.com'}</p>
+                    <span className="user-role-badge">{getRoleDisplay(userInfo.role)}</span>
+                  </div>
+                </div>
+                
+                <div className="user-menu-items">
+                  <Link to="/profile" className="menu-item">
+                    <FaUserCircle className="menu-icon" />
+                    <span>Tài khoản cá nhân</span>
+                  </Link>
+                  <Link to="/settings" className="menu-item">
+                    <FaCog className="menu-icon" />
+                    <span>Cài đặt</span>
+                  </Link>
+                  <button className="menu-item" onClick={toggleDarkMode}>
+                    {settings.darkMode ? (
+                      <>
+                        <FaSun className="menu-icon" />
+                        <span>Chế độ sáng</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaMoon className="menu-icon" />
+                        <span>Chế độ tối</span>
+                      </>
                     )}
-                  </div>
-                ))}
-              </div>
-              <div className="notifications-footer">
-                <button className="view-all-notifications">
-                  Xem tất cả thông báo
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* User Profile */}
-        <div className="user-profile-container-admin">
-          <button 
-            className="user-profile-button-admin"
-            onClick={() => setShowUserMenu(!showUserMenu)}
-          >
-            {userInfo.avatar ? (
-              <img src={userInfo.avatar} alt={userInfo.name} className="user-avatar" />
-            ) : (
-              <div className="avatar-placeholder">
-                {userInfo.name.charAt(0)}
-              </div>
-            )}
-            <div className="user-info-admin">
-              <span className="user-name-admin">{userInfo.name}</span>
-              <span className="user-role-admin">{userInfo.role}</span>
-            </div>
-            <span className="dropdown-arrow">▾</span>
-          </button>
-
-          {showUserMenu && (
-            <div className="user-menu-dropdown">
-              <div className="user-menu-header">
-                {userInfo.avatar ? (
-                  <img src={userInfo.avatar} alt={userInfo.name} className="menu-avatar" />
-                ) : (
-                  <div className="menu-avatar-placeholder">
-                    {userInfo.name.charAt(0)}
-                  </div>
-                )}
-                <div className="menu-user-info">
-                  <h4>{userInfo.name}</h4>
-                  <p>{userInfo.email}</p>
-                  <span className="user-role-badge">{userInfo.role}</span>
+                  </button>
+                  <div className="menu-divider"></div>
+                  <button className="menu-item logout-item" onClick={handleLogout}>
+                    <FiLogOut className="menu-icon" />
+                    <span>Đăng xuất</span>
+                  </button>
                 </div>
               </div>
-              
-              <div className="user-menu-items">
-                <a href="/profile" className="menu-item">
-                  <FaUserCircle className="menu-icon" />
-                  <span>Tài khoản cá nhân</span>
-                </a>
-                <a href="/settings" className="menu-item">
-                  <FaCog className="menu-icon" />
-                  <span>Cài đặt</span>
-                </a>
-                <button className="menu-item" onClick={toggleDarkMode}>
-                  {darkMode ? (
-                    <>
-                      <FaSun className="menu-icon" />
-                      <span>Chế độ sáng</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaMoon className="menu-icon" />
-                      <span>Chế độ tối</span>
-                    </>
-                  )}
-                </button>
-                <div className="menu-divider"></div>
-                <button className="menu-item logout-item" onClick={handleLogout}>
-                  <FiLogOut className="menu-icon" />
-                  <span>Đăng xuất</span>
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Click outside to close dropdowns */}
-      {(showNotifications || showUserMenu) && (
-        <div 
-          className="dropdown-overlay"
-          onClick={() => {
-            setShowNotifications(false);
-            setShowUserMenu(false);
-          }}
-        />
-      )}
-    </header>
+        {/* Click outside to close user menu */}
+        {showUserMenu && (
+          <div 
+            className="dropdown-overlay"
+            onClick={() => setShowUserMenu(false)}
+          />
+        )}
+      </header>
+
+      {/* Search Modal */}
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+    </>
   );
 };
 

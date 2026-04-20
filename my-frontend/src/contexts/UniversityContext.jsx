@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import axios from 'axios';
 
 // ✅ Lấy API URL từ env
-const API_BASE_URL = import.meta.env.DEV 
+const API_BASE_URL = import.meta.env.DEV
   ? '/api'  // Vite sẽ proxy đến ngrok
   : (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 
@@ -37,12 +37,12 @@ export const UniversityProvider = ({ children }) => {
   });
 
   // ============= TEACHER API CALLS =============
-  
+
   const fetchTeachers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/teachers');
-      
+
       // ✅ Xử lý response linh hoạt
       let teachersData = [];
       if (Array.isArray(response.data)) {
@@ -55,10 +55,10 @@ export const UniversityProvider = ({ children }) => {
         console.warn('Unexpected teachers response structure:', response.data);
         teachersData = [];
       }
-      
+
       console.log('✅ Loaded teachers:', teachersData.length);
       setTeachers(teachersData);
-      
+
       // Cập nhật stats
       setStats({
         totalTeachers: teachersData.length,
@@ -66,7 +66,7 @@ export const UniversityProvider = ({ children }) => {
         lockedTeachers: teachersData.filter(t => t.isLocked).length,
         totalDepartments: departments.length
       });
-      
+
       setLoading(false);
     } catch (error) {
       console.error('❌ Lỗi khi tải danh sách giảng viên:', error);
@@ -79,53 +79,122 @@ export const UniversityProvider = ({ children }) => {
     }
   }, [departments.length]);
 
+  // UniversityContext.jsx - Sửa lại hàm addTeacher
+
+  // UniversityContext.jsx - Bỏ phần tạo user account, chỉ tạo teacher
+  // UniversityContext.jsx - Sửa lại addTeacher
   const addTeacher = async (teacherData) => {
     try {
       console.log('📤 Adding teacher:', teacherData);
-      const response = await api.post('/teachers', teacherData);
-      
-      // ✅ Xử lý response
-      const newTeacher = response.data.data || response.data;
-      console.log('✅ Teacher added:', newTeacher);
-      
+
+      // Bước 1: Tạo user account
+      const userPayload = {
+        name: teacherData.name,
+        email: teacherData.email,
+        password: teacherData.password,
+        role: 'teacher',
+        phone: teacherData.phone,
+        avatar: teacherData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherData.name)}&background=4F46E5&color=fff`
+      };
+
+      console.log('📤 Creating user account:', userPayload);
+
+      const userResponse = await api.post('/auth/register', userPayload);
+
+      if (!userResponse.data || !userResponse.data.success) {
+        throw new Error(userResponse.data?.message || 'Không thể tạo tài khoản');
+      }
+
+      const userId = userResponse.data.user?.id || userResponse.data.user?._id;
+      console.log('✅ User account created with ID:', userId);
+
+      // Bước 2: Tạo teacher profile với userId
+      const teacherPayload = {
+        ...teacherData,
+        userId: userId, // Liên kết với user
+        isLocked: teacherData.isLocked || false
+      };
+
+      const teacherResponse = await api.post('/teachers', teacherPayload);
+      const newTeacher = teacherResponse.data.data || teacherResponse.data;
+
+      console.log('✅ Teacher profile created:', newTeacher);
+
       setTeachers(prev => [...prev, newTeacher]);
-      
+
       setStats(prev => ({
         ...prev,
         totalTeachers: prev.totalTeachers + 1,
         activeTeachers: prev.activeTeachers + 1
       }));
-      
+
       if (teacherData.faculty) {
         updateDepartmentFacultyCount(teacherData.faculty, 'increment');
       }
-      
+
       return newTeacher;
+
     } catch (error) {
       console.error('❌ Lỗi khi thêm giảng viên:', error);
+
       if (error.response) {
-        console.error('Server response:', error.response.data);
-        throw new Error(error.response.data?.message || 'Lỗi khi thêm giảng viên');
+        const errorMsg = error.response.data?.message || 'Lỗi khi thêm giảng viên';
+        throw new Error(errorMsg);
       }
       throw error;
     }
+  };
+  // Trong UniversityContext.jsx, thêm các function sau:
+
+  const loginAsTeacher = async (teacherCode, password) => {
+    try {
+      const response = await api.post('/auth/teacher-login', {
+        teacherCode,
+        password
+      });
+
+      if (response.data.success) {
+        // Lưu token và thông tin giảng viên
+        localStorage.setItem('teacherToken', response.data.token);
+        localStorage.setItem('teacherInfo', JSON.stringify(response.data.teacher));
+        return response.data;
+      }
+      throw new Error('Đăng nhập thất bại');
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const logoutTeacher = () => {
+    localStorage.removeItem('teacherToken');
+    localStorage.removeItem('teacherInfo');
+  };
+
+  const getCurrentTeacher = () => {
+    const teacherStr = localStorage.getItem('teacherInfo');
+    return teacherStr ? JSON.parse(teacherStr) : null;
+  };
+
+  const isTeacherLoggedIn = () => {
+    return !!localStorage.getItem('teacherToken');
   };
 
   const updateTeacher = async (id, teacherData) => {
     try {
       console.log('📝 Updating teacher:', id, teacherData);
       const response = await api.put(`/teachers/${id}`, teacherData);
-      
+
       const updatedTeacher = response.data.data || response.data;
       const oldTeacher = teachers.find(t => (t._id || t.id) === id);
-      
+
       setTeachers(prev => prev.map(t => (t._id || t.id) === id ? updatedTeacher : t));
-      
+
       if (oldTeacher && oldTeacher.faculty !== teacherData.faculty) {
         updateDepartmentFacultyCount(oldTeacher.faculty, 'decrement');
         updateDepartmentFacultyCount(teacherData.faculty, 'increment');
       }
-      
+
       return updatedTeacher;
     } catch (error) {
       console.error('❌ Lỗi khi cập nhật giảng viên:', error);
@@ -137,15 +206,15 @@ export const UniversityProvider = ({ children }) => {
     try {
       const response = await api.put(`/teachers/${id}/toggle-lock`, {});
       const updatedTeacher = response.data.data || response.data;
-      
+
       setTeachers(prev => prev.map(t => (t._id || t.id) === id ? updatedTeacher : t));
-      
+
       setStats(prev => ({
         ...prev,
         activeTeachers: !currentLockStatus ? prev.activeTeachers + 1 : prev.activeTeachers - 1,
         lockedTeachers: !currentLockStatus ? prev.lockedTeachers - 1 : prev.lockedTeachers + 1
       }));
-      
+
       return updatedTeacher;
     } catch (error) {
       console.error('❌ Lỗi khi khóa/mở khóa giảng viên:', error);
@@ -157,20 +226,20 @@ export const UniversityProvider = ({ children }) => {
     try {
       const teacher = teachers.find(t => (t._id || t.id) === id);
       await api.delete(`/teachers/${id}`);
-      
+
       setTeachers(prev => prev.filter(t => (t._id || t.id) !== id));
-      
+
       setStats(prev => ({
         ...prev,
         totalTeachers: prev.totalTeachers - 1,
         activeTeachers: teacher?.isLocked ? prev.activeTeachers : prev.activeTeachers - 1,
         lockedTeachers: teacher?.isLocked ? prev.lockedTeachers - 1 : prev.lockedTeachers
       }));
-      
+
       if (teacher?.faculty) {
         updateDepartmentFacultyCount(teacher.faculty, 'decrement');
       }
-      
+
     } catch (error) {
       console.error('❌ Lỗi khi xóa giảng viên:', error);
       throw error;
@@ -178,11 +247,11 @@ export const UniversityProvider = ({ children }) => {
   };
 
   // ============= DEPARTMENT API CALLS =============
-  
+
   const fetchDepartments = useCallback(async () => {
     try {
       const response = await api.get('/departments?limit=100');
-      
+
       // ✅ Xử lý response linh hoạt
       let depts = [];
       if (Array.isArray(response.data)) {
@@ -195,7 +264,7 @@ export const UniversityProvider = ({ children }) => {
         console.warn('Unexpected departments response structure:', response.data);
         depts = [];
       }
-      
+
       // Tính số lượng giảng viên cho mỗi khoa
       const deptsWithCount = depts.map(dept => ({
         ...dept,
@@ -203,14 +272,14 @@ export const UniversityProvider = ({ children }) => {
         _id: dept._id || dept.id,
         facultyCount: teachers.filter(t => t.faculty === dept.name).length
       }));
-      
+
       setDepartments(deptsWithCount);
-      
+
       setStats(prev => ({
         ...prev,
         totalDepartments: depts.length
       }));
-      
+
       console.log('✅ Loaded departments:', depts.length);
     } catch (error) {
       console.error('❌ Lỗi khi tải danh sách khoa:', error);
@@ -222,19 +291,19 @@ export const UniversityProvider = ({ children }) => {
     try {
       const response = await api.post('/departments', departmentData);
       const newDept = response.data.data || response.data;
-      
-      setDepartments(prev => [...prev, { 
-        ...newDept, 
+
+      setDepartments(prev => [...prev, {
+        ...newDept,
         id: newDept._id || newDept.id,
         _id: newDept._id || newDept.id,
-        facultyCount: 0 
+        facultyCount: 0
       }]);
-      
+
       setStats(prev => ({
         ...prev,
         totalDepartments: prev.totalDepartments + 1
       }));
-      
+
       return newDept;
     } catch (error) {
       console.error('❌ Lỗi khi thêm khoa:', error);
@@ -247,7 +316,7 @@ export const UniversityProvider = ({ children }) => {
       console.log('📝 Updating department:', id, departmentData);
       const response = await api.put(`/departments/${id}`, departmentData);
       const updatedDept = response.data.data || response.data;
-      
+
       setDepartments(prev => prev.map(d => {
         const deptId = d._id || d.id;
         if (deptId === id) {
@@ -259,7 +328,7 @@ export const UniversityProvider = ({ children }) => {
         }
         return d;
       }));
-      
+
       return updatedDept;
     } catch (error) {
       console.error('❌ Lỗi khi cập nhật khoa:', error);
@@ -270,23 +339,23 @@ export const UniversityProvider = ({ children }) => {
   const deleteDepartment = async (id) => {
     try {
       const dept = departments.find(d => (d._id || d.id) === id);
-      
+
       if (dept) {
         const teachersInDept = teachers.filter(t => t.faculty === dept.name);
         if (teachersInDept.length > 0) {
           throw new Error(`Không thể xóa khoa này vì còn ${teachersInDept.length} giảng viên đang thuộc khoa.`);
         }
       }
-      
+
       await api.delete(`/departments/${id}`);
-      
+
       setDepartments(prev => prev.filter(d => (d._id || d.id) !== id));
-      
+
       setStats(prev => ({
         ...prev,
         totalDepartments: prev.totalDepartments - 1
       }));
-      
+
     } catch (error) {
       console.error('❌ Lỗi khi xóa khoa:', error);
       throw error;
@@ -297,29 +366,29 @@ export const UniversityProvider = ({ children }) => {
     try {
       const response = await api.patch(`/departments/${id}/status`, { status: newStatus });
       const updatedDept = response.data.data || response.data;
-      
+
       setDepartments(prev => prev.map(d => {
         const deptId = d._id || d.id;
         return deptId === id ? updatedDept : d;
       }));
-      
+
     } catch (error) {
       console.error('❌ Lỗi khi cập nhật trạng thái khoa:', error);
       throw error;
     }
   };
-  
+
   // ============= HELPER FUNCTIONS =============
-  
+
   const updateDepartmentFacultyCount = (facultyName, action) => {
     if (!facultyName) return;
-    
+
     setDepartments(prev => prev.map(dept => {
       if (dept.name === facultyName) {
         return {
           ...dept,
-          facultyCount: action === 'increment' 
-            ? dept.facultyCount + 1 
+          facultyCount: action === 'increment'
+            ? dept.facultyCount + 1
             : Math.max(0, dept.facultyCount - 1)
         };
       }
@@ -336,7 +405,7 @@ export const UniversityProvider = ({ children }) => {
   };
 
   // ============= INITIAL LOAD =============
-  
+
   useEffect(() => {
     fetchTeachers();
   }, [fetchTeachers]);
